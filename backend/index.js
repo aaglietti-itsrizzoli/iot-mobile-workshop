@@ -4,8 +4,12 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const app = express();
+const expressWs = require('express-ws')(app);
+
 app.use(cors());
 app.use(bodyParser.json());
+
+app.use('/static', express.static('public'))
 
 const PORT = 3000;
 
@@ -34,6 +38,41 @@ app.post('/devices/:deviceHash/events', (req, res) => {
         if (err) throw err;
         console.log('device stored', { _: new Date(), deviceHash, event });
         res.send('');
+    });
+});
+
+app.ws('/echo', function (ws, req) {
+    console.log('WSS /echo connected', { _: new Date(), req })
+    ws.on('message', function (msg) {
+        console.log('WSS /echo onmessage', { _: new Date(), msg })
+        r.table('devices').changes().run(conn, function (err, cursor) {
+            if (err) {
+                console.log('error getting devices changefeed', {_: new Date(), err})
+                return;
+            }
+            cursor.each((err, data) => {
+                if (err) {
+                    console.log('error getting devices cursor.each', {_: new Date(), err})
+                    return;
+                }
+                console.log('devices cursor oneach', {_: new Date(), data})
+                // ws.send(JSON.stringify(data))
+            });
+        });
+        r.table('events').changes().run(conn, function (err, cursor) {
+            if (err) {
+                console.log('error getting events changefeed', {_: new Date(), err})
+                return;
+            }
+            cursor.each((err, data) => {
+                if (err) {
+                    console.log('error getting events cursor.each', {_: new Date(), err})
+                    return;
+                }
+                console.log('events cursor oneach', {_: new Date(), data})
+                ws.send(JSON.stringify(data))
+            });
+        });
     });
 });
 

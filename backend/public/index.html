@@ -1,0 +1,70 @@
+<html>
+
+<head>
+    <link rel="shortcut icon" href="/static/favicon.ico">
+
+</head>
+
+<body>
+    <button onclick="startListen()">START LISTEN</button>
+    <h2 id="eventsCount"></h2>
+    <h2 id="lastMessageOn"></h2>
+    <div id="chart_div"></div>
+    <script>
+        var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
+        var events = [];
+
+        socket.onopen = function () {
+            console.log("onopen", { _: new Date(), readyState: socket.readyState });
+        }
+
+        socket.onmessage = function (msg) {
+            // console.log("onmessage", { _: new Date(), msg });
+            events.push(msg);
+            document.getElementById('eventsCount').innerHTML = events.length;
+            document.getElementById('lastMessageOn').innerHTML = new Date().toISOString();
+
+            var event = JSON.parse(msg.data);
+            var _ = new Date(event.new_val.event._);
+            var x = event.new_val.event.x;
+            var y = event.new_val.event.y;
+            var z = event.new_val.event.z;
+            var row = [_, x, y, z];
+            console.log("onmessage new row", { _: new Date(), row });
+            chartData.addRow(row);
+            chart.draw(chartData, chartOptions);
+        }
+
+        socket.onclose = function () {
+            console.log("onclose", { _: new Date(), readyState: socket.readyState });
+        }
+
+        function startListen() {
+            socket.send('hello world');
+        }
+    </script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { packages: ['corechart', 'line'] });
+        google.charts.setOnLoadCallback(drawCrosshairs);
+        var chartOptions = {};
+        var chartData = null;
+        var chart = null;
+
+        function drawCrosshairs() {
+            chartData = new google.visualization.DataTable();
+            chartData.addColumn('datetime', 'time');
+            chartData.addColumn('number', 'X');
+            chartData.addColumn('number', 'Y');
+            chartData.addColumn('number', 'Z');
+
+            chartData.addRow([new Date(), 0, 0, 0]);
+
+            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+
+            chart.draw(chartData, chartOptions);
+        }
+    </script>
+</body>
+
+</html>
