@@ -29,7 +29,16 @@
             var x = event.new_val.event.x;
             var y = event.new_val.event.y;
             var z = event.new_val.event.z;
-            var row = [_, x, y, z];
+            var team = event.new_val.team;
+            var teamIndex = [
+                'blue',
+                'red',
+                'yellow',
+                'green',
+            ];
+            // var row = [_, x, y, z];
+            var row = [_, null, null, null, null];
+            row[teamIndex.indexOf(team) + 1] = x
             console.log("onmessage new row", { _: new Date(), row });
             chartData.addRow(row);
             var totalRows = chartData.getNumberOfRows();
@@ -59,11 +68,14 @@
         function drawCrosshairs() {
             chartData = new google.visualization.DataTable();
             chartData.addColumn('datetime', 'time');
-            chartData.addColumn('number', 'X');
-            chartData.addColumn('number', 'Y');
-            chartData.addColumn('number', 'Z');
+            chartData.addColumn('number', 'Xblue');
+            chartData.addColumn('number', 'Xred');
+            chartData.addColumn('number', 'Xyellow');
+            chartData.addColumn('number', 'Xgreen');
+            // chartData.addColumn('number', 'Z');
 
-            chartData.addRow([new Date(), 0, 0, 0]);
+            // chartData.addRow([new Date(), 0, 0, 0]);
+            chartData.addRow([new Date(), 0, 0, 0, 0]);
 
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
