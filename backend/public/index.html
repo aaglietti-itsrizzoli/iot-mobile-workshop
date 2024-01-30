@@ -9,10 +9,20 @@
     <button onclick="startListen()">START LISTEN</button>
     <h2 id="eventsCount"></h2>
     <h2 id="lastMessageOn"></h2>
+    <h2 id="blue" style="color: blue"></h2>
+    <h2 id="red" style="color: red"></h2>
+    <h2 id="yellow" style="color: yellow"></h2>
+    <h2 id="green" style="color: green"></h2>
     <div id="chart_div"></div>
     <script>
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var events = [];
+        var teams = {
+            blue: [],
+            red: [],
+            yellow: [],
+            green: [],
+        }
 
         socket.onopen = function () {
             console.log("onopen", { _: new Date(), readyState: socket.readyState });
@@ -30,6 +40,11 @@
             var y = event.new_val.event.y;
             var z = event.new_val.event.z;
             var team = event.new_val.team;
+            var fingerprint = event.new_val.fingerprint;
+            if (teams[team].indexOf(fingerprint) === -1) {
+                teams[team].push(fingerprint);
+                document.getElementById(team).innerHTML = teams[team].length;
+            }
             var teamIndex = [
                 'blue',
                 'red',
