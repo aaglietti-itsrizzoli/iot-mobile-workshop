@@ -40,7 +40,7 @@
             document.getElementById('lastMessageOn').innerHTML = new Date().toISOString();
 
             var event = JSON.parse(msg.data);
-            var _ = new Date(event.new_val.event._);
+            var _ = new Date();
             var x = event.new_val.event.x;
             var y = event.new_val.event.y;
             var z = event.new_val.event.z;
