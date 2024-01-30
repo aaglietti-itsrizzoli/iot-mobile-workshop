@@ -2,4 +2,4 @@
 
 backend used by
 
-https://snack.expo.dev/@aaglietti-itsrizzoli/victory-native
+https://snack.expo.dev/@aaglietti-itsrizzoli/iot-earthquake-detection
