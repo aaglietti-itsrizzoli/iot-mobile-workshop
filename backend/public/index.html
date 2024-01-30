@@ -13,11 +13,15 @@
     <h2 id="red" style="color: red"></h2>
     <h2 id="yellow" style="color: yellow"></h2>
     <h2 id="green" style="color: green"></h2>
-    <div id="chart_div"></div>
+    <div id="chart_div_x"></div>
+    <div id="chart_div_y"></div>
+    <div id="chart_div_z"></div>
     <script>
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var events = [];
-        var rows = [];
+        var rowsX = [];
+        var rowsY = [];
+        var rowsZ = [];
         var teams = {
             blue: [],
             red: [],
@@ -52,19 +56,47 @@
                 'yellow',
                 'green',
             ];
-            var previousRow = rows.length > 0 ? rows[rows.length - 1] : [null, null, null, null, null];
-            var row = [...previousRow];
-            row[0] = _;
-            row[teamIndex.indexOf(team) + 1] = x;
-            rows.push(row);
-            console.log("onmessage new row", { _: new Date(), row: rows[rows.length - 1] });
-            chartData.addRow(row);
-            var totalRows = chartData.getNumberOfRows();
-            if (totalRows > 50) {
-                chartData.removeRows(0, totalRows - 50);
+            var previousRowX = rowsX.length > 0 ? rowsX[rowsX.length - 1] : [null, null, null, null, null];
+            var rowX = [...previousRowX];
+            rowX[0] = _;
+            rowX[teamIndex.indexOf(team) + 1] = x;
+            rowsX.push(rowX);
+            console.log("onmessage new rowX", { _: new Date(), row: rowsX[rowsX.length - 1] });
+            chartDataX.addRow(rowX);
+            var totalRowsX = chartDataX.getNumberOfRows();
+            if (totalRowsX > 50) {
+                chartDataX.removeRows(0, totalRowsX - 50);
             }
 
-            chart.draw(chartData, chartOptions);
+            chartX.draw(chartDataX, chartOptions);
+
+            var previousRowY = rowsY.length > 0 ? rowsY[rowsY.length - 1] : [null, null, null, null, null];
+            var rowY = [...previousRowY];
+            rowY[0] = _;
+            rowY[teamIndex.indexOf(team) + 1] = y;
+            rowsY.push(rowY);
+            console.log("onmessage new rowY", { _: new Date(), row: rowsY[rowsY.length - 1] });
+            chartDataY.addRow(rowY);
+            var totalRowsY = chartDataY.getNumberOfRows();
+            if (totalRowsY > 50) {
+                chartDataY.removeRows(0, totalRowsY - 50);
+            }
+
+            chartY.draw(chartDataY, chartOptions);
+
+            var previousRowZ = rowsZ.length > 0 ? rowsZ[rowsZ.length - 1] : [null, null, null, null, null];
+            var rowZ = [...previousRowZ];
+            rowZ[0] = _;
+            rowZ[teamIndex.indexOf(team) + 1] = z;
+            rowsZ.push(rowZ);
+            console.log("onmessage new rowZ", { _: new Date(), row: rowsZ[rowsZ.length - 1] });
+            chartDataZ.addRow(rowZ);
+            var totalRowsZ = chartDataZ.getNumberOfRows();
+            if (totalRowsZ > 50) {
+                chartDataZ.removeRows(0, totalRowsZ - 50);
+            }
+
+            chartZ.draw(chartDataZ, chartOptions);
         }
 
         socket.onclose = function () {
@@ -80,24 +112,52 @@
         google.charts.load('current', { packages: ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawCrosshairs);
         var chartOptions = {};
-        var chartData = null;
-        var chart = null;
+        var chartDataX = null;
+        var chartDataY = null;
+        var chartDataZ = null;
+        var chartX = null;
+        var chartY = null;
+        var chartZ = null;
 
         function drawCrosshairs() {
-            chartData = new google.visualization.DataTable();
-            chartData.addColumn('datetime', 'time');
-            chartData.addColumn('number', 'Xblue');
-            chartData.addColumn('number', 'Xred');
-            chartData.addColumn('number', 'Xyellow');
-            chartData.addColumn('number', 'Xgreen');
-            // chartData.addColumn('number', 'Z');
+            chartDataX = new google.visualization.DataTable();
+            chartDataX.addColumn('datetime', 'time');
+            chartDataX.addColumn('number', 'Xblue');
+            chartDataX.addColumn('number', 'Xred');
+            chartDataX.addColumn('number', 'Xyellow');
+            chartDataX.addColumn('number', 'Xgreen');
 
-            // chartData.addRow([new Date(), 0, 0, 0]);
-            chartData.addRow([new Date(), 0, 0, 0, 0]);
+            chartDataX.addRow([new Date(), 0, 0, 0, 0]);
 
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            chartX = new google.visualization.LineChart(document.getElementById('chart_div_x'));
 
-            chart.draw(chartData, chartOptions);
+            chartX.draw(chartDataX, chartOptions);
+
+            chartDataY = new google.visualization.DataTable();
+            chartDataY.addColumn('datetime', 'time');
+            chartDataY.addColumn('number', 'Yblue');
+            chartDataY.addColumn('number', 'Yred');
+            chartDataY.addColumn('number', 'Yyellow');
+            chartDataY.addColumn('number', 'Ygreen');
+
+            chartDataY.addRow([new Date(), 0, 0, 0, 0]);
+
+            chartY = new google.visualization.LineChart(document.getElementById('chart_div_y'));
+
+            chartY.draw(chartDataY, chartOptions);
+
+            chartDataZ = new google.visualization.DataTable();
+            chartDataZ.addColumn('datetime', 'time');
+            chartDataZ.addColumn('number', 'Zblue');
+            chartDataZ.addColumn('number', 'Zred');
+            chartDataZ.addColumn('number', 'Zyellow');
+            chartDataZ.addColumn('number', 'Zgreen');
+
+            chartDataZ.addRow([new Date(), 0, 0, 0, 0]);
+
+            chartZ = new google.visualization.LineChart(document.getElementById('chart_div_z'));
+
+            chartZ.draw(chartDataZ, chartOptions);
         }
     </script>
 </body>
