@@ -17,6 +17,7 @@
     <script>
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var events = [];
+        var rows = [];
         var teams = {
             blue: [],
             red: [],
@@ -51,10 +52,12 @@
                 'yellow',
                 'green',
             ];
-            // var row = [_, x, y, z];
-            var row = [_, null, null, null, null];
-            row[teamIndex.indexOf(team) + 1] = x
-            console.log("onmessage new row", { _: new Date(), row });
+            var previousRow = rows.length > 0 ? rows[rows.length - 1] : [null, null, null, null, null];
+            var row = [...previousRow];
+            row[0] = _;
+            row[teamIndex.indexOf(team) + 1] = x;
+            rows.push(row);
+            console.log("onmessage new row", { _: new Date(), row: rows[rows.length - 1] });
             chartData.addRow(row);
             var totalRows = chartData.getNumberOfRows();
             if (totalRows > 50) {
