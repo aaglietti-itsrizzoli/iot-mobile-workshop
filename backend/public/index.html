@@ -58,7 +58,7 @@
             chartData.addRow(row);
             var totalRows = chartData.getNumberOfRows();
             if (totalRows > 50) {
-                chartData.removeRows(0, totalRows - 50)
+                chartData.removeRows(0, totalRows - 50);
             }
 
             chart.draw(chartData, chartOptions);
