@@ -18,10 +18,21 @@
     <h2 id="red" style="color: red"></h2>
     <h2 id="yellow" style="color: yellow"></h2>
     <h2 id="green" style="color: green"></h2>
+    <br />
+    <h2 id="xMax"></h2>
+    <h2 id="zMax"></h2>
+    <h2 id="yMax"></h2>
     <div id="chart_div_x"></div>
     <div id="chart_div_y"></div>
     <div id="chart_div_z"></div>
     <script>
+        var teamIndex = [
+            'blue',
+            'red',
+            'yellow',
+            'green',
+        ];
+
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var events = [];
         var rowsX = [];
@@ -32,6 +43,51 @@
             red: [],
             yellow: [],
             green: [],
+        }
+
+        function doRanking() {
+            if (rowsX.length) {
+                var rowsX_ranking = rowsX.reduce(doRankingReducer, []);
+                var rowsX_max = rowsX_ranking.toSorted((a,b) => { return (a > b) ? -1 : 1 })[0];
+                var rowsX_maxTeam = teamIndex[rowsX_ranking.indexOf(rowsX_max)];
+                document.getElementById('xMax').innerHTML = rowsX_max;
+                document.getElementById('xMax').style.color = rowsX_maxTeam;
+            }
+
+            if (rowsZ.length) {
+                var rowsY_ranking = rowsY.reduce(doRankingReducer, []);
+                var rowsY_max = rowsY_ranking.toSorted((a,b) => { return (a > b) ? -1 : 1 })[0];
+                var rowsY_maxTeam = teamIndex[rowsY_ranking.indexOf(rowsY_max)];
+                document.getElementById('yMax').innerHTML = rowsY_max;
+                document.getElementById('yMax').style.color = rowsY_maxTeam;
+            }
+
+            if (rowsY.length) {
+                var rowsZ_ranking = rowsZ.reduce(doRankingReducer, []);
+                var rowsZ_max = rowsZ_ranking.toSorted((a,b) => { return (a > b) ? -1 : 1 })[0];
+                var rowsZ_maxTeam = teamIndex[rowsZ_ranking.indexOf(rowsZ_max)];
+                document.getElementById('zMax').innerHTML = rowsZ_max;
+                document.getElementById('zMax').style.color = rowsZ_maxTeam;
+            }
+        }
+        setInterval(doRanking, 1000);
+
+        function doRankingReducer(accumulator, row) {
+            var _accumulator = [];
+            var _row = row.slice(1); // remove the first element that's a timestamp
+
+            for (var rowTeamIndex = 0; rowTeamIndex < _row.length; rowTeamIndex++) {
+                if (_row[rowTeamIndex]) {
+                    if (accumulator[rowTeamIndex]) {
+                        _accumulator[rowTeamIndex] = (Math.abs(_row[rowTeamIndex]) + accumulator[rowTeamIndex]) / 2
+                    } else {
+                        // first execution
+                        _accumulator[rowTeamIndex] = Math.abs(_row[rowTeamIndex])
+                    }
+                }
+            }
+
+            return _accumulator;
         }
 
         socket.onopen = function () {
@@ -55,12 +111,7 @@
                 teams[team].push(fingerprint);
                 document.getElementById(team).innerHTML = teams[team].length;
             }
-            var teamIndex = [
-                'blue',
-                'red',
-                'yellow',
-                'green',
-            ];
+
             var previousRowX = rowsX.length > 0 ? rowsX[rowsX.length - 1] : [null, null, null, null, null];
             var rowX = [...previousRowX];
             rowX[0] = _;
