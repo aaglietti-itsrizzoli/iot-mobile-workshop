@@ -4,10 +4,18 @@ import { Accelerometer } from 'expo-sensors';
 import * as Device from 'expo-device';
 import * as Crypto from 'expo-crypto';
 import axios from 'axios';
-import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
+import Svg, {
+  Defs,
+  ClipPath,
+  Path,
+  Rect,
+  Polygon,
+  G,
+  Circle,
+} from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.8';
+const VERSION = '0.1.0';
 const INTERVAL = 500;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -40,7 +48,10 @@ const checkAccelerometerAvailability = async () => {
     }
     return true;
   } catch (error) {
-    console.error('Errore nel controllo della disponibilità dell\'accelerometro:', error);
+    console.error(
+      "Errore nel controllo della disponibilità dell'accelerometro:",
+      error
+    );
     return false;
   }
 };
@@ -50,23 +61,36 @@ const requestAccelerometerPermissions = async () => {
   try {
     const { granted } = await Accelerometer.requestPermissionsAsync();
     if (!granted) {
-      console.log('Permessi accelerometro non concessi. L\'utente potrebbe dover abilitarli nelle impostazioni.');
+      console.log(
+        "Permessi accelerometro non concessi. L'utente potrebbe dover abilitarli nelle impostazioni."
+      );
       return false;
     }
     return true;
   } catch (error) {
-    console.error('Errore nella richiesta dei permessi dell\'accelerometro:', error);
+    console.error(
+      "Errore nella richiesta dei permessi dell'accelerometro:",
+      error
+    );
     return false;
   }
 };
 
-// Funzione che gestisce il turno del giocatore
-const isMyTurn = (setWaterLevel) => {
+// Funzione che avvia il turno del giocatore
+const startMyTurn = async (turnId, deviceHash, setWaterLevel, setError) => {
+  const url = `${API_BASE_URL}/turns/${turnId}/devices/${deviceHash}/waterLevel`;
+
+  try {
+    setWaterLevel(1);
+    // Invia il waterLevel iniziale
+    await axios.patch(url, { waterLevel: 1 });
+  } catch (error) {
+    console.error('Error in startMyTurn:', { url, error });
+    setError('PATCH /waterLEvel ERROR: ' + error.message);
+  }
+
   // Imposta un pattern di vibrazione di 1 secondo
   Vibration.vibrate(1000);
-
-  // Resetta il livello dell'acqua al 100%
-  setWaterLevel(1.0);
 
   return true;
 };
@@ -77,7 +101,7 @@ console.log('App loaded', _);
 const GITHUB_CODESPACE_NAME = 'fluffy-xylophone-xg7jv9vx5vqcv666';
 const API_BASE_URL = `https://${GITHUB_CODESPACE_NAME}-3000.app.github.dev`;
 async function devices(team, fingerprint, setError) {
-  console.log('POST /devices', { _: new Date(), team, fingerprint });
+  // console.log('POST /devices', { _: new Date(), team, fingerprint });
 
   try {
     await axios.post(
@@ -91,33 +115,36 @@ async function devices(team, fingerprint, setError) {
         headers: {},
       }
     );
+    /*
     console.log('POST /devices completed', {
       _: new Date(),
       team,
       fingerprint,
     });
+    */
   } catch (e) {
     console.log('POST /devices ERROR', { _: new Date(), team, fingerprint, e });
-    setError("POST /devices ERROR: " + e.message);
+    setError('POST /devices ERROR: ' + e.message);
   }
 }
 
 // Funzione per il polling dell'API /polling
-async function checkActiveFingerprints(setError) {
+async function polling(setError) {
   try {
     const response = await axios.get(`${API_BASE_URL}/polling`);
-    const turn = response.data.turn;
-    const turnId = turn.id;
-    const turnName = turn.name;
-    const turnStatus = turn.status;
-    console.log('GET /polling', { _: new Date(), turnId, turnName, turnStatus });
-
-    return response.data.fingerprints;
+    if (response.data.turn) {
+      return {
+        success: true,
+        ...response.data,
+      };
+    }
   } catch (e) {
     console.log('GET /polling ERROR', { _: new Date(), e });
-    setError("GET /polling ERROR: " + e.message);
-    return null;
+    setError('GET /polling ERROR: ' + e.message);
   }
+  return {
+    succcess: false,
+  };
 }
 
 async function events(team, fingerprint, event) {
@@ -217,9 +244,9 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }) {
   const W = width;
   const H = height;
   const neckTopY = H * 0.08;
-  const neckBottomY = H * 0.20;
-  const neckLeftX = W * 0.40;
-  const neckRightX = W * 0.60;
+  const neckBottomY = H * 0.2;
+  const neckLeftX = W * 0.4;
+  const neckRightX = W * 0.6;
   const bodyLeftX = W * 0.18;
   const bodyRightX = W * 0.82;
   const bodyBottomY = H * 0.96;
@@ -227,7 +254,7 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }) {
   // Sagoma stilizzata della borraccia (interno)
   const bottlePath = `
     M ${neckLeftX} ${neckTopY}
-    Q ${W * 0.50} ${H * 0.02} ${neckRightX} ${neckTopY}
+    Q ${W * 0.5} ${H * 0.02} ${neckRightX} ${neckTopY}
     L ${neckRightX} ${neckBottomY}
     Q ${bodyRightX} ${H * 0.24} ${bodyRightX} ${H * 0.36}
     L ${bodyRightX} ${H * 0.86}
@@ -248,7 +275,9 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }) {
   const y0 = H * (1 - clamp(level, 0, 1));
   const c = y0 - m * (W / 2);
   const waterPoly = clipRectBelowLine(W, H, clamp(m, -50, 50), c);
-  const waterPoints = waterPoly.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const waterPoints = waterPoly
+    .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(' ');
 
   return (
     <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
@@ -269,7 +298,11 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }) {
 
       {/* Beccuccio (tratteggio per suggerire apertura) */}
       <Path
-        d={`M ${spoutX - 6} ${neckTopY - 4} L ${spoutX + 10} ${neckTopY - 4} L ${spoutX + 10} ${neckBottomY + 4} L ${spoutX - 6} ${neckBottomY + 4} Z`}
+        d={`M ${spoutX - 6} ${neckTopY - 4} L ${spoutX + 10} ${
+          neckTopY - 4
+        } L ${spoutX + 10} ${neckBottomY + 4} L ${spoutX - 6} ${
+          neckBottomY + 4
+        } Z`}
         fill="#ddd"
         stroke="#444"
         strokeWidth={1}
@@ -299,7 +332,9 @@ export default function App() {
     // Richiedi i permessi (necessario per web mobile)
     const hasPermissions = await requestAccelerometerPermissions();
     if (!hasPermissions) {
-      setError("I permessi per l'accelerometro sono stati negati. Abilitali nelle impostazioni.");
+      setError(
+        "I permessi per l'accelerometro sono stati negati. Abilitali nelle impostazioni."
+      );
       return;
     }
 
@@ -376,7 +411,7 @@ export default function App() {
   const [chartDataZ, setChartDataZ] = useState([{ x: _, y: 0 }]);
 
   // Stato del livello dell'acqua
-  const [waterLevel, setWaterLevel] = useState(0.7);
+  const [waterLevel, setWaterLevel] = useState(0);
 
   // Polling per controllare se è il turno del dispositivo corrente
   useEffect(() => {
@@ -384,29 +419,79 @@ export default function App() {
 
     const POLLING_INTERVAL = 2000; // 2 secondi
     let pollingInterval;
+    let isCurrentlyMyTurn = false;
 
     const checkTurn = async () => {
-      const activeFingerprints = await checkActiveFingerprints(setError);
+      try {
+        const pollingData = await polling(setError);
 
-      if (activeFingerprints && Array.isArray(activeFingerprints)) {
-        // Verifica se il fingerprint corrente è tra quelli attivi
-        if (activeFingerprints.includes(fingerprint)) {
-          console.log('È il mio turno!', { _: new Date(), fingerprint });
-          isMyTurn(setWaterLevel);
+        if (pollingData.success) {
+          const activeFingerprints = pollingData.fingerprints;
+          const turnId = pollingData.turn.id;
+
+          if (activeFingerprints && Array.isArray(activeFingerprints)) {
+            const isTurnActive = activeFingerprints.includes(fingerprint);
+
+            if (isTurnActive && !isCurrentlyMyTurn) {
+              // Inizio del turno
+              console.log('È il mio turno!', { _: new Date(), fingerprint });
+              isCurrentlyMyTurn = true;
+              setActiveTurnId(turnId);
+              startMyTurn(turnId, fingerprint, setWaterLevel, setError);
+            } else if (!isTurnActive && isCurrentlyMyTurn) {
+              // Fine del turno
+              console.log('Turno terminato', { _: new Date(), fingerprint });
+              isCurrentlyMyTurn = false;
+              Vibration.cancel(); // Ferma la vibrazione
+              setActiveTurnId(null);
+            } else if (isTurnActive && isCurrentlyMyTurn) {
+              Vibration.vibrate(1000);
+            }
+          } else if (isCurrentlyMyTurn) {
+            // Nessun turno attivo mentre era il mio turno
+            console.log('Turno terminato (nessun turno attivo)', {
+              _: new Date(),
+              fingerprint,
+            });
+            isCurrentlyMyTurn = false;
+            Vibration.cancel(); // Ferma la vibrazione
+            setActiveTurnId(null);
+          }
         }
+      } catch (error) {
+        console.error('Error in checkTurn:', error);
+        setError('Error checking turn: ' + error.message);
       }
     };
 
     // Avvia il polling
     pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
 
-    // Cleanup: ferma il polling quando il componente viene smontato
+    // Cleanup: ferma il polling e la vibrazione quando il componente viene smontato
     return () => {
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
+      Vibration.cancel();
     };
-  }, [team, fingerprint]);
+  }, [team, fingerprint]); // Mantiene traccia dell'ultimo livello di acqua riportato al server
+  const [lastReportedLevel, setLastReportedLevel] = useState(1.0);
+  const [activeTurnId, setActiveTurnId] = useState(null);
+
+  // Invia l'aggiornamento del waterLevel al server
+  const reportWaterLevel = async (newLevel) => {
+    if (!activeTurnId || !fingerprint) return;
+
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/turns/${activeTurnId}/devices/${fingerprint}/waterLevel`,
+        { waterLevel: newLevel }
+      );
+      setLastReportedLevel(newLevel);
+    } catch (error) {
+      console.error('Error reporting water level:', error);
+    }
+  };
 
   // Aggiorna livello acqua in base all'inclinazione (versamento)
   useEffect(() => {
@@ -414,7 +499,17 @@ export default function App() {
     const ratePerSec = computePourRate(angleFromVerticalDeg);
     if (ratePerSec <= 0) return; // niente versamento
     const dt = INTERVAL / 1000;
-    setWaterLevel((prev) => clamp(prev - ratePerSec * dt, 0, 1));
+
+    setWaterLevel((prev) => {
+      const newLevel = clamp(prev - ratePerSec * dt, 0, 1);
+
+      // Se il livello è cambiato di almeno il 10% dall'ultimo report
+      if (Math.abs(newLevel - lastReportedLevel) >= 0.1) {
+        reportWaterLevel(newLevel);
+      }
+
+      return newLevel;
+    });
   }, [x, y, z]);
 
   const { rollDeg } = computeOrientation({ x, y, z });
@@ -446,9 +541,11 @@ export default function App() {
       </Text>
 
       {/* Borraccia con acqua animata */}
-      <View style={styles.bottleWrapper}>
-        <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} />
-      </View>
+      {waterLevel > 0 ? (
+        <View style={styles.bottleWrapper}>
+          <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} />
+        </View>
+      ) : null}
     </View>
   );
 }

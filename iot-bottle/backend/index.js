@@ -25,7 +25,7 @@ app.post('/devices', async (req, res) => {
         ...req.body,
         lastSeenOn: new Date()
     };
-    console.log('POST /devices', { _: new Date(), device });
+    // console.log('POST /devices', { _: new Date(), device });
 
     try {
         // Cerca di aggiornare un device esistente
@@ -38,7 +38,7 @@ app.post('/devices', async (req, res) => {
             ))
             .run(conn);
 
-        console.log('device updated/stored', { _: new Date(), device });
+        // console.log('device updated/stored', { _: new Date(), device });
         res.send('');
     } catch (err) {
         console.error('Error in POST /devices:', err);
@@ -101,19 +101,54 @@ app.patch('/turns/:turnId', async (req, res) => {
 // API per aggiungere un device a un turno
 app.post('/turns/:turnId/devices/:deviceHash', async (req, res) => {
     const { turnId, deviceHash } = req.params;
-
+    
     try {
         const turnDevice = {
             addedOn: new Date(),
             turnId: turnId,
-            deviceId: deviceHash
+            deviceId: deviceHash,
+            waterLevel: 1.0  // Livello iniziale al 100%
         };
-
+        
         await r.table('turnsDevices').insert(turnDevice).run(conn);
         console.log('device added to turn', { _: new Date(), turnId, deviceHash });
         res.send('');
     } catch (err) {
         console.error('Error adding device to turn:', err);
+        res.status(500).send(err.message);
+    }
+});
+// API per aggiornare il waterLevel di un device in un turno
+app.patch('/turns/:turnId/devices/:deviceHash/waterLevel', async (req, res) => {
+    const { turnId, deviceHash } = req.params;
+    const { waterLevel } = req.body;
+    // console.log('PATCH /turns/:turnId/devices/:deviceHash/waterLevel', { _: new Date(), turnId, deviceHash, waterLevel });
+
+    if (typeof waterLevel !== 'number' || waterLevel < 0 || waterLevel > 1) {
+        return res.status(400).send('waterLevel deve essere un numero tra 0 e 1');
+    }
+
+    try {
+        // Verifica che il turno sia ancora aperto
+        const turn = await r.table('turns')
+            .get(turnId)
+            .run(conn);
+
+        if (!turn || turn.status !== 'open') {
+            return res.status(400).send('Il turno non è aperto');
+        }
+
+        // Aggiorna il waterLevel
+        await r.table('turnsDevices')
+            .getAll(turnId, { index: 'turnId' })
+            .filter({ deviceId: deviceHash })
+            .update({ waterLevel })
+            .run(conn);
+
+        console.log('waterLevel updated', { _: new Date(), turnId, deviceHash, waterLevel });
+        res.send('');
+    } catch (err) {
+        console.error('Error updating waterLevel:', err);
         res.status(500).send(err.message);
     }
 });
@@ -128,12 +163,12 @@ app.get('/polling', async (req, res) => {
             .limit(1)
             .run(conn)
             .then(cursor => cursor.toArray())
-
+            
         if (!activeTurns || activeTurns.length === 0) {
             return res.json([]); // Nessun turno attivo
         }
         const activeTurn = activeTurns[0];
-
+        
         // Ottiene tutti i deviceId per il turno attivo
         const devices = await r.table('turnsDevices')
             .getAll(activeTurn.id, { index: 'turnId' })
@@ -165,8 +200,23 @@ app.ws('/echo', function (ws, req) {
                     console.log('error getting devices cursor.each', { _: new Date(), err })
                     return;
                 }
-                console.log('devices cursor oneach', { _: new Date(), data })
+                // console.log('devices cursor oneach', { _: new Date(), data })
                 ws.send(JSON.stringify({ type: 'devices', data: data.new_val }))
+            });
+        });
+
+        r.table('turnsDevices').changes().run(conn, function (err, cursor) {
+            if (err) {
+                console.log('error getting turnsDevices changefeed', { _: new Date(), err })
+                return;
+            }
+            cursor.each((err, data) => {
+                if (err) {
+                    console.log('error getting turnsDevices cursor.each', { _: new Date(), err })
+                    return;
+                }
+                // console.log('turnsDevices cursor oneach', { _: new Date(), data })
+                ws.send(JSON.stringify({ type: 'turnsDevices', data: data.new_val }))
             });
         });
     });

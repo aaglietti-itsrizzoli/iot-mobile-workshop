@@ -6,11 +6,13 @@
         h2 {
             display: inline;
         }
+
         .container {
             display: flex;
             justify-content: space-between;
             margin-top: 20px;
         }
+
         .team-column {
             flex: 1;
             margin: 0 10px;
@@ -18,6 +20,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
         .device-button {
             display: block;
             margin: 5px 0;
@@ -26,6 +29,7 @@
             text-align: left;
             cursor: pointer;
         }
+
         .turn-controls {
             margin: 20px 0;
             padding: 10px;
@@ -39,7 +43,7 @@
     <button onclick="startListen()">START LISTEN</button>
     <h2 id="devicesCount"></h2>
     <h2 id="lastDeviceOn"></h2>
-    
+
     <div class="turn-controls">
         <input type="text" id="turnName" placeholder="Nome del turno">
         <button onclick="createTurn()">Crea Nuovo Turno</button>
@@ -49,18 +53,30 @@
     <div class="container">
         <div class="team-column" style="border-color: blue;">
             <h3 style="color: blue;">Team Blue (<span id="blue">0</span>)</h3>
+            <div class="water-info" style="margin: 10px 0;">
+                <h4>Acqua Risparmiata: <span id="blue-water">0.00</span> L</h4>
+            </div>
             <div id="blue-devices"></div>
         </div>
         <div class="team-column" style="border-color: red;">
             <h3 style="color: red;">Team Red (<span id="red">0</span>)</h3>
+            <div class="water-info" style="margin: 10px 0;">
+                <h4>Acqua Risparmiata: <span id="red-water">0.00</span> L</h4>
+            </div>
             <div id="red-devices"></div>
         </div>
         <div class="team-column" style="border-color: #cccc00;">
             <h3 style="color: #cccc00;">Team Yellow (<span id="yellow">0</span>)</h3>
+            <div class="water-info" style="margin: 10px 0;">
+                <h4>Acqua Risparmiata: <span id="yellow-water">0.00</span> L</h4>
+            </div>
             <div id="yellow-devices"></div>
         </div>
         <div class="team-column" style="border-color: green;">
             <h3 style="color: green;">Team Green (<span id="green">0</span>)</h3>
+            <div class="water-info" style="margin: 10px 0;">
+                <h4>Acqua Risparmiata: <span id="green-water">0.00</span> L</h4>
+            </div>
             <div id="green-devices"></div>
         </div>
     </div>
@@ -75,6 +91,7 @@
 
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var devices = [];
+        var turnsDevices = [];
         var teams = {
             blue: [],
             red: [],
@@ -91,21 +108,33 @@
 
             var message = JSON.parse(msg.data);
             console.log("message", { _: new Date(), message });
+            var messageType = message.type;
+            console.log("messageType", { _: new Date(), messageType });
 
-            switch (message.type) {
+            switch (messageType) {
                 case 'devices':
                     console.log('received device from server');
                     var device = message.data;
-                    devices.push(device);
-                    document.getElementById('devicesCount').innerHTML = devices.length;
-                    document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
-                    var _ = new Date();
-                    var team = device.team;
-                    var fingerprint = device.fingerprint;
-                    if (teams[team].indexOf(fingerprint) === -1) {
-                        teams[team].push(fingerprint);
-                        document.getElementById(team).innerHTML = teams[team].length;
+                    if (!devices.find(d => d.fingerprint === device.fingerprint)) {
+                        devices.push(device);
+                        document.getElementById('devicesCount').innerHTML = devices.length;
+                        document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
+
+                        var team = device.team;
+                        var fingerprint = device.fingerprint;
+                        if (teams[team].indexOf(fingerprint) === -1) {
+                            teams[team].push(fingerprint);
+                            document.getElementById(team).innerHTML = teams[team].length;
+                            updateDevicesList(team, fingerprint);
+                        }
                     }
+                    break;
+                case 'turnsDevices':
+                    console.log('received turnsDevices from server');
+                    var turnDevice = message.data;
+                    turnsDevices.push(turnDevice);
+                    var fingerprint = turnDevice.fingerprint;
+                    var waterLevel = turnDevice.waterLevel;
                     break;
             }
         }
@@ -196,34 +225,6 @@
                 button.onclick = () => addDeviceToTurn(fingerprint);
                 button.style.color = team;
                 container.appendChild(button);
-            }
-        }
-
-        // Modifica la gestione degli eventi WebSocket per aggiornare la visualizzazione
-        socket.onmessage = function (msg) {
-            console.log("onmessage", { _: new Date(), msg });
-
-            var message = JSON.parse(msg.data);
-            console.log("message", { _: new Date(), message });
-
-            switch (message.type) {
-                case 'devices':
-                    console.log('received device from server');
-                    var device = message.data;
-                    if (!devices.find(d => d.fingerprint === device.fingerprint)) {
-                        devices.push(device);
-                        document.getElementById('devicesCount').innerHTML = devices.length;
-                        document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
-                        
-                        var team = device.team;
-                        var fingerprint = device.fingerprint;
-                        if (teams[team].indexOf(fingerprint) === -1) {
-                            teams[team].push(fingerprint);
-                            document.getElementById(team).innerHTML = teams[team].length;
-                            updateDevicesList(team, fingerprint);
-                        }
-                    }
-                    break;
             }
         }
     </script>
