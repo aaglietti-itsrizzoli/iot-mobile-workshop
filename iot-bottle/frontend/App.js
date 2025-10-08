@@ -8,7 +8,7 @@ import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-nativ
 
 const RETENTION = 1000;
 const VERSION = '0.0.4';
-const INTERVAL = 100;
+const INTERVAL = 500;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
   designName: Device.designName,
