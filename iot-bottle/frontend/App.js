@@ -7,7 +7,7 @@ import axios from 'axios';
 import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.3';
+const VERSION = '0.0.4';
 const INTERVAL = 100;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -328,6 +328,7 @@ export default function App() {
       </Text>
       <Text style={styles.text}>loaded on {_.toISOString()}</Text>
       <Text style={styles.text}>now is {now.toISOString()}</Text>
+      <Text style={styles.text}>waterLevel is {waterLevel}</Text>
       {error ? <Text style={styles.text}>Error is {error}</Text> : null}
       <Text style={styles.text}>
         accelerometer data is in gs where 1g = 9.81 m/s^2
