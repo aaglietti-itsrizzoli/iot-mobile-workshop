@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "react-native-paper": "4.9.2",
+    "@expo/vector-icons": "^15.0.2",
+    "expo-sensors": "~15.0.7",
+    "expo-device": "~8.0.9",
+    "expo-crypto": "~15.0.7",
+    "axios": "*"
+  }
+}
