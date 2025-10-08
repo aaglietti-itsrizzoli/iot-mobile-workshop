@@ -48,6 +48,10 @@
         <input type="text" id="turnName" placeholder="Nome del turno">
         <button onclick="createTurn()">Crea Nuovo Turno</button>
         <button onclick="closeTurn()" id="closeTurnButton" disabled>Chiudi Turno Attivo</button>
+        <div id="activeTurnInfo" style="margin-top: 10px;">
+            <h3>Turno Attivo: <span id="activeTurnName">Nessun turno attivo</span></h3>
+            <p>Dispositivi nel turno: <span id="activeTurnDevices">0</span></p>
+        </div>
     </div>
 
     <div class="container">
@@ -91,12 +95,80 @@
 
         var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
         var devices = [];
-        var turnsDevices = [];
+        var turnsDevices = new Map(); // Map per tenere traccia dei dispositivi nel turno attivo
         var teams = {
             blue: [],
             red: [],
             yellow: [],
             green: [],
+        }
+        var activeTurn = null; // Stato del turno attivo
+
+        // Funzione per aggiornare i waterLevel dei team
+        function updateTeamWaterLevels() {
+            const teamWaterLevels = {
+                blue: 0,
+                red: 0,
+                yellow: 0,
+                green: 0
+            };
+
+            // Calcola il totale di acqua risparmiata per team
+            for (const [deviceId, turnDevice] of turnsDevices.entries()) {
+                const device = devices.find(d => d.fingerprint === deviceId);
+                if (device && device.team) {
+                    const waterSaved = 1 - (turnDevice.waterLevel || 0);
+                    teamWaterLevels[device.team] += waterSaved;
+                }
+            }
+
+            // Aggiorna i display
+            for (const team in teamWaterLevels) {
+                document.getElementById(`${team}-water`).textContent =
+                    teamWaterLevels[team].toFixed(2);
+            }
+        }
+
+        // Funzione per aggiornare le informazioni del turno attivo
+        async function updateActiveTurnInfo() {
+            try {
+                const response = await fetch('/polling');
+                const data = await response.json();
+                
+                if (data.turn) {
+                    activeTurn = data.turn;
+                    document.getElementById('activeTurnName').textContent = data.turn.name;
+                    document.getElementById('activeTurnDevices').textContent = data.fingerprints.length;
+                    document.getElementById('closeTurnButton').disabled = false;
+                    
+                    // Aggiorna lo stato dei pulsanti dei device
+                    updateDeviceButtons(data.fingerprints);
+                } else {
+                    activeTurn = null;
+                    document.getElementById('activeTurnName').textContent = 'Nessun turno attivo';
+                    document.getElementById('activeTurnDevices').textContent = '0';
+                    document.getElementById('closeTurnButton').disabled = true;
+                    
+                    // Riabilita tutti i pulsanti
+                    updateDeviceButtons([]);
+                }
+            } catch (error) {
+                console.error('Error updating active turn info:', error);
+            }
+        }
+
+        // Funzione per aggiornare lo stato dei pulsanti dei device
+        function updateDeviceButtons(activeFingerprints) {
+            document.querySelectorAll('.device-button').forEach(button => {
+                const fingerprint = button.getAttribute('data-fingerprint');
+                if (activeFingerprints.includes(fingerprint)) {
+                    button.disabled = true;
+                    button.style.opacity = '0.5';
+                } else {
+                    button.disabled = false;
+                    button.style.opacity = '1';
+                }
+            });
         }
 
         socket.onopen = function () {
@@ -108,18 +180,16 @@
 
             var message = JSON.parse(msg.data);
             console.log("message", { _: new Date(), message });
-            var messageType = message.type;
-            console.log("messageType", { _: new Date(), messageType });
 
-            switch (messageType) {
+            switch (message.type) {
                 case 'devices':
                     console.log('received device from server');
                     var device = message.data;
-                    if (!devices.find(d => d.fingerprint === device.fingerprint)) {
+                    const existingDeviceIndex = devices.findIndex(d => d.fingerprint === device.fingerprint);
+                    if (existingDeviceIndex === -1) {
                         devices.push(device);
                         document.getElementById('devicesCount').innerHTML = devices.length;
                         document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
-
                         var team = device.team;
                         var fingerprint = device.fingerprint;
                         if (teams[team].indexOf(fingerprint) === -1) {
@@ -129,12 +199,20 @@
                         }
                     }
                     break;
+                    
                 case 'turnsDevices':
-                    console.log('received turnsDevices from server');
+                    console.log('received turnsDevices update from server');
                     var turnDevice = message.data;
-                    turnsDevices.push(turnDevice);
-                    var fingerprint = turnDevice.fingerprint;
-                    var waterLevel = turnDevice.waterLevel;
+                    
+                    // Aggiorna la mappa dei dispositivi nel turno
+                    if (turnDevice.waterLevel !== undefined) {
+                        turnsDevices.set(turnDevice.deviceId, turnDevice);
+                        // Aggiorna i waterLevel visualizzati
+                        updateTeamWaterLevels();
+                    }
+                    
+                    // Aggiorna le informazioni del turno attivo
+                    updateActiveTurnInfo();
                     break;
             }
         }
@@ -145,9 +223,12 @@
 
         function startListen() {
             socket.send('hello world');
+            // Avvia l'aggiornamento periodico delle informazioni del turno
+            setInterval(updateActiveTurnInfo, 5000);
         }
-
-        let activeTurnId = null;
+        
+        // Inizializza le informazioni del turno attivo all'avvio
+        updateActiveTurnInfo();
 
         // Funzione per creare un nuovo turno
         async function createTurn() {
@@ -166,10 +247,9 @@
                     body: JSON.stringify({ name: turnName })
                 });
                 const data = await response.json();
-                activeTurnId = data.id;
-                document.getElementById('closeTurnButton').disabled = false;
+                activeTurn = { id: data.id, name: turnName };
                 document.getElementById('turnName').value = '';
-                alert('Turno creato con successo!');
+                await updateActiveTurnInfo();
             } catch (error) {
                 console.error('Error creating turn:', error);
                 alert('Errore nella creazione del turno');
@@ -178,18 +258,22 @@
 
         // Funzione per chiudere il turno attivo
         async function closeTurn() {
-            if (!activeTurnId) {
+            if (!activeTurn) {
                 alert('Nessun turno attivo');
                 return;
             }
 
             try {
-                await fetch(`/turns/${activeTurnId}`, {
+                await fetch(`/turns/${activeTurn.id}`, {
                     method: 'PATCH'
                 });
-                activeTurnId = null;
-                document.getElementById('closeTurnButton').disabled = true;
-                alert('Turno chiuso con successo!');
+                // Reset stato turno
+                activeTurn = null;
+                await updateActiveTurnInfo();
+                
+                // Reset dei waterLevel
+                turnsDevices.clear();
+                updateTeamWaterLevels();
             } catch (error) {
                 console.error('Error closing turn:', error);
                 alert('Errore nella chiusura del turno');
@@ -198,16 +282,16 @@
 
         // Funzione per aggiungere un device al turno
         async function addDeviceToTurn(fingerprint) {
-            if (!activeTurnId) {
+            if (!activeTurn) {
                 alert('Nessun turno attivo. Crea prima un nuovo turno.');
                 return;
             }
 
             try {
-                await fetch(`/turns/${activeTurnId}/devices/${fingerprint}`, {
+                await fetch(`/turns/${activeTurn.id}/devices/${fingerprint}`, {
                     method: 'POST'
                 });
-                alert('Device aggiunto al turno!');
+                await updateActiveTurnInfo();
             } catch (error) {
                 console.error('Error adding device to turn:', error);
                 alert('Errore nell\'aggiunta del device al turno');

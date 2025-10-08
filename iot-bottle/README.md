@@ -81,4 +81,8 @@ E' un applicazione Express.js avviata tramite docker-compose.
 - backend/public/index.html quando vene cliccato il pusante di un fingerprint, tramite API POST /turns/:turnId/devices/:deviceHash, aggiunge il device al turno
 - la tabella turnsDevices ha un attributo waterLevel che indica il livello di acqua rimanente
 - backend/index.js espone una API PATCH /turns/:turnId/devices/:deviceHash/waterLevel che permette di registrare il waterLevel di ogni device durante il turno, accetta aggiornamenti solo se il turno è open
-- backend/public/index.html ogni volta che arriva un evento turnsDevices aggiorna il waterLevel totale del team visualizzato
+- backend/public/index.html ogni volta che arriva un evento turnsDevices aggiorna il waterLevel rimanente, somma dei waterLevel di ogni device, del team visualizzato
+- backend/public/index.html deve mostrare il name del turno attivo se presente, tramite API /polling, ed il numero di devices presenti nel turno
+- backend/public/index.html se un device fa già parte del turno attivo disabilita il pulsante corrispondente
+
+#### TODO backend
