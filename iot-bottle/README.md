@@ -13,6 +13,10 @@ Livelli & CO₂ risparmiata (per partita):
 
 Pronti? Telefono in mano, borraccia virtuale alzata… e che vinca chi risparmia più CO₂!
 
+## History
+
+https://web.archive.org/web/20150522152335/http://www.seetorino.com/l-invenzione-della-borraccia-e-amalia-guglielminetti/
+
 ## The Challenge
 
 La sfida si articola così:
