@@ -43,6 +43,7 @@
     <button onclick="startListen()">START LISTEN</button>
     <h2 id="devicesCount"></h2>
     <h2 id="lastDeviceOn"></h2>
+    <h3 id="totalCo2AcrossTeams"></h3>
 
     <div class="turn-controls">
         <input type="text" id="turnName" placeholder="Nome del turno">
@@ -105,7 +106,7 @@
         var activeTurn = null; // Stato del turno attivo
 
         // Funzione per aggiornare i waterLevel dei team
-        function updateTeamWaterLevels() {
+        function updateTeamWaterLevels(isClosingTurn) {
             const teamWaterLevels = {
                 blue: 0,
                 red: 0,
@@ -123,15 +124,21 @@
             }
 
             // Aggiorna i display
+            var totalCo2AcrossTeams = 0;
             for (const team in teamWaterLevels) {
                 const waterSaved = teamWaterLevels[team];
                 // Assumendo che ogni unità di waterLevel = 0.5L (una bottiglietta)
                 const bottlesSaved = waterSaved * 0.5;
                 // Calcolo CO2: circa 0.25 kg CO2 per ogni bottiglia da 0.5L risparmiata
                 const co2Saved = bottlesSaved * 0.25;
-                
+
+                totalCo2AcrossTeams += co2Saved;
+
                 document.getElementById(`${team}-water`).textContent =
                     `${waterSaved.toFixed(2)} L (${co2Saved.toFixed(2)} kg CO₂)`;
+            }
+            if (!isClosingTurn) {
+                document.getElementById('totalCo2AcrossTeams').textContent = `${totalCo2AcrossTeams.toFixed(2)} kg CO₂`;
             }
         }
 
@@ -140,13 +147,13 @@
             try {
                 const response = await fetch('/polling');
                 const data = await response.json();
-                
+
                 if (data.turn) {
                     activeTurn = data.turn;
                     document.getElementById('activeTurnName').textContent = data.turn.name;
                     document.getElementById('activeTurnDevices').textContent = data.fingerprints.length;
                     document.getElementById('closeTurnButton').disabled = false;
-                    
+
                     // Aggiorna lo stato dei pulsanti dei device
                     updateDeviceButtons(data.fingerprints);
                 } else {
@@ -154,7 +161,7 @@
                     document.getElementById('activeTurnName').textContent = 'Nessun turno attivo';
                     document.getElementById('activeTurnDevices').textContent = '0';
                     document.getElementById('closeTurnButton').disabled = true;
-                    
+
                     // Riabilita tutti i pulsanti
                     updateDeviceButtons([]);
                 }
@@ -205,18 +212,18 @@
                         }
                     }
                     break;
-                    
+
                 case 'turnsDevices':
                     console.log('received turnsDevices update from server');
                     var turnDevice = message.data;
-                    
+
                     // Aggiorna la mappa dei dispositivi nel turno
                     if (turnDevice.waterLevel !== undefined) {
                         turnsDevices.set(turnDevice.deviceId, turnDevice);
                         // Aggiorna i waterLevel visualizzati
                         updateTeamWaterLevels();
                     }
-                    
+
                     // Aggiorna le informazioni del turno attivo
                     updateActiveTurnInfo();
                     break;
@@ -232,7 +239,7 @@
             // Avvia l'aggiornamento periodico delle informazioni del turno
             setInterval(updateActiveTurnInfo, 5000);
         }
-        
+
         // Inizializza le informazioni del turno attivo all'avvio
         updateActiveTurnInfo();
 
@@ -276,10 +283,10 @@
                 // Reset stato turno
                 activeTurn = null;
                 await updateActiveTurnInfo();
-                
+
                 // Reset dei waterLevel
                 turnsDevices.clear();
-                updateTeamWaterLevels();
+                updateTeamWaterLevels(true);
             } catch (error) {
                 console.error('Error closing turn:', error);
                 alert('Errore nella chiusura del turno');
