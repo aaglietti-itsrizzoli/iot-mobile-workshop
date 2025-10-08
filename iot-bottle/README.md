@@ -1,7 +1,7 @@
 # IoT Bottle an ITS Academy Angelo Rizzoli challenge
 
 Un contest lampo dove il tuo smartphone diventa… una borraccia smart!
-L’app usa il giroscopio: a intervalli casuali sceglie un giocatore, vibra e sul display appare la sfida.
+L’app usa l'accelerometro: a intervalli casuali sceglie un giocatore, vibra e sul display appare la sfida.
 Hai 3 secondi per “bere” inclinandolo e scuotendolo come una vera borraccia.
 Ogni sorso conta: più bevi dalla borraccia riutilizzabile, più CO₂ eviti rispetto all’acqua in bottiglia monouso.
 Classifiche live, colpi di scena e… sete di sostenibilità!
@@ -40,13 +40,15 @@ L'applicazione Expo è composta da unico file frontend/App.js
 - calcolo del fingerprint del device 
 - assegnazione casuale di team in base al fingerprint
 - funzioni axios per svolgere richieste HTTP al backend
-- listener per ottenere gli eventi prodotti dal giroscopio
-- React state per visualizzare dati grezzi del giroscopio
-
-#### TODO
+- listener per ottenere gli eventi prodotti dall'accelerometro
+- React state per visualizzare dati grezzi dall'accelerometro
 - mostra sullo sfondo la sagoma di una borraccia
 - la sagoma della borraccia contiene acqua
 - l'acqua si anima in base all'inclinazione del telefono
 - se il telefono è verticale l'acqua rimane all'interno della borraccia ferma
 - se il telefono è inclinato l'acqua si inclina ed eventualmente fuoriesce dal beccuccio della borraccia
 - l'acqua fuoriesce dal beccuccio solo se parzialmente inclinata permettendo all'aria di entrare
+- non vi è alcuna animazione dell'acqua che fuoriesce dal beccuccio della borraccia
+
+#### TODO
+- aggiun
