@@ -20,25 +20,135 @@ app.get('/', (req, res) => {
     res.send('<html><body><h1>Hello World, from express</h1><a href="/static/index.html">Go to static index.html</a></body></html>');
 });
 
-app.post('/devices', (req, res) => {
-    const device = req.body;
+app.post('/devices', async (req, res) => {
+    const device = {
+        ...req.body,
+        lastSeenOn: new Date()
+    };
     console.log('POST /devices', { _: new Date(), device });
-    r.table('devices').insert(device).run(conn, function (err, ress) {
-        if (err) throw err;
-        console.log('device stored', { _: new Date(), device });
+
+    try {
+        // Cerca di aggiornare un device esistente
+        const result = await r.table('devices')
+            .get(device.fingerprint)
+            .replace(oldDoc => r.branch(
+                oldDoc.eq(null),
+                device,  // Se non esiste, inserisce il nuovo device
+                oldDoc.merge({ lastSeenOn: device.lastSeenOn })  // Se esiste, aggiorna solo lastSeenOn
+            ))
+            .run(conn);
+
+        console.log('device updated/stored', { _: new Date(), device });
         res.send('');
-    });
+    } catch (err) {
+        console.error('Error in POST /devices:', err);
+        res.status(500).send(err.message);
+    }
 });
 
 app.post('/devices/:deviceHash/events', (req, res) => {
     const deviceHash = req.params.deviceHash;
     const event = req.body;
-    console.log('POST /devices', { _: new Date(), deviceHash, event });
+    console.log('POST /devices/:deviceHash/events', { _: new Date(), deviceHash, event });
     r.table('events').insert(event).run(conn, function (err, ress) {
         if (err) throw err;
-        console.log('device stored', { _: new Date(), deviceHash, event });
+        console.log('event stored', { _: new Date(), deviceHash, event });
         res.send('');
     });
+});
+
+// API per creare un nuovo turno
+app.post('/turns', async (req, res) => {
+    const turn = {
+        createdOn: new Date(),
+        status: 'open',
+        name: req.body.name,
+        statusUpdatedOn: new Date()
+    };
+
+    try {
+        const result = await r.table('turns').insert(turn).run(conn);
+        console.log('turn created', { _: new Date(), turn });
+        res.json({ id: result.generated_keys[0] });
+    } catch (err) {
+        console.error('Error creating turn:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// API per cambiare lo stato di un turno
+app.patch('/turns/:turnId', async (req, res) => {
+    const { turnId } = req.params;
+    const newStatus = 'closed'; // Impostiamo sempre a 'closed' come richiesto
+
+    try {
+        await r.table('turns')
+            .get(turnId)
+            .update({
+                status: newStatus,
+                statusUpdatedOn: new Date()
+            })
+            .run(conn);
+
+        console.log('turn status updated', { _: new Date(), turnId, status: newStatus });
+        res.send('');
+    } catch (err) {
+        console.error('Error updating turn status:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// API per aggiungere un device a un turno
+app.post('/turns/:turnId/devices/:deviceHash', async (req, res) => {
+    const { turnId, deviceHash } = req.params;
+
+    try {
+        const turnDevice = {
+            addedOn: new Date(),
+            turnId: turnId,
+            deviceId: deviceHash
+        };
+
+        await r.table('turnsDevices').insert(turnDevice).run(conn);
+        console.log('device added to turn', { _: new Date(), turnId, deviceHash });
+        res.send('');
+    } catch (err) {
+        console.error('Error adding device to turn:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// API per il polling dei device attivi
+app.get('/polling', async (req, res) => {
+    try {
+        // Trova il turno attivo più recente
+        const activeTurns = await r.table('turns')
+            .getAll('open', { index: 'status' })
+            .orderBy('statusUpdatedOn')
+            .limit(1)
+            .run(conn)
+            .then(cursor => cursor.toArray())
+
+        if (!activeTurns || activeTurns.length === 0) {
+            return res.json([]); // Nessun turno attivo
+        }
+        const activeTurn = activeTurns[0];
+
+        // Ottiene tutti i deviceId per il turno attivo
+        const devices = await r.table('turnsDevices')
+            .getAll(activeTurn.id, { index: 'turnId' })
+            .run(conn)
+            .then(cursor => cursor.toArray());
+        const fingerprints = devices.map(d => d.deviceId);
+
+        res.json({
+            turn: activeTurn,
+            fingerprints: fingerprints
+        });
+    } catch (err) {
+        console.error('Error in polling:', err);
+        res.status(500).send(err.message);
+    }
 });
 
 app.ws('/echo', function (ws, req) {
@@ -62,17 +172,55 @@ app.ws('/echo', function (ws, req) {
     });
 });
 
-r.connect({ host: 'db', port: 28015 }, function (err, _conn) {
-    conn = _conn;
+async function initializeDatabase(conn) {
+    try {
+        // Lista delle tabelle esistenti
+        const tables = await r.db('test').tableList().run(conn);
+
+        // Creazione tabella devices se non esiste
+        if (!tables.includes('devices')) {
+            await r.db('test').tableCreate('devices', {
+                primaryKey: 'fingerprint'
+            }).run(conn);
+            console.log('devices table created', { _: new Date() });
+        }
+
+        // Creazione tabella events se non esiste
+        if (!tables.includes('events')) {
+            await r.db('test').tableCreate('events').run(conn);
+            console.log('events table created', { _: new Date() });
+        }
+
+        // Creazione tabella turns se non esiste
+        if (!tables.includes('turns')) {
+            await r.db('test').tableCreate('turns').run(conn);
+            console.log('turns table created', { _: new Date() });
+            // Creare indice su status e statusUpdatedOn per ottimizzare le query
+            await r.db('test').table('turns').indexCreate('status').run(conn);
+            await r.db('test').table('turns').indexCreate('statusUpdatedOn').run(conn);
+        }
+
+        // Creazione tabella turnsDevices se non esiste
+        if (!tables.includes('turnsDevices')) {
+            await r.db('test').tableCreate('turnsDevices').run(conn);
+            console.log('turnsDevices table created', { _: new Date() });
+            // Creare indice sul turnId per ottimizzare le query
+            await r.db('test').table('turnsDevices').indexCreate('turnId').run(conn);
+        }
+
+        console.log('Database initialization completed');
+    } catch (err) {
+        console.error('Error initializing database:', err);
+        throw err;
+    }
+}
+
+r.connect({ host: 'db', port: 28015 }, async function (err, _conn) {
     if (err) throw err;
-    console.log('rethink db connection created', { _: new Date(), conn })
-    r.db('test').tableCreate('devices').run(conn, function (err, res) {
-        if (err) throw err;
-        console.log('devices table created', { _: new Date(), res });
-        r.db('test').tableCreate('events').run(conn, function (err, res) {
-            if (err) throw err;
-            console.log('events table created', { _: new Date(), res });
-            app.listen(PORT, () => console.log(`Hello world app listening on port ${PORT}!`))
-        });
-    });
+    conn = _conn;
+    console.log('rethink db connection created', { _: new Date(), conn });
+
+    await initializeDatabase(conn);
+
+    app.listen(PORT, () => console.log(`Hello world app listening on port ${PORT}!`));
 });

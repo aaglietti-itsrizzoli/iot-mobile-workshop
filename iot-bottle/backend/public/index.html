@@ -6,6 +6,32 @@
         h2 {
             display: inline;
         }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .team-column {
+            flex: 1;
+            margin: 0 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .device-button {
+            display: block;
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+        }
+        .turn-controls {
+            margin: 20px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
     </style>
 </head>
 
@@ -13,11 +39,31 @@
     <button onclick="startListen()">START LISTEN</button>
     <h2 id="devicesCount"></h2>
     <h2 id="lastDeviceOn"></h2>
-    <br />
-    <h2 id="blue" style="color: blue"></h2>
-    <h2 id="red" style="color: red"></h2>
-    <h2 id="yellow" style="color: yellow"></h2>
-    <h2 id="green" style="color: green"></h2>
+    
+    <div class="turn-controls">
+        <input type="text" id="turnName" placeholder="Nome del turno">
+        <button onclick="createTurn()">Crea Nuovo Turno</button>
+        <button onclick="closeTurn()" id="closeTurnButton" disabled>Chiudi Turno Attivo</button>
+    </div>
+
+    <div class="container">
+        <div class="team-column" style="border-color: blue;">
+            <h3 style="color: blue;">Team Blue (<span id="blue">0</span>)</h3>
+            <div id="blue-devices"></div>
+        </div>
+        <div class="team-column" style="border-color: red;">
+            <h3 style="color: red;">Team Red (<span id="red">0</span>)</h3>
+            <div id="red-devices"></div>
+        </div>
+        <div class="team-column" style="border-color: #cccc00;">
+            <h3 style="color: #cccc00;">Team Yellow (<span id="yellow">0</span>)</h3>
+            <div id="yellow-devices"></div>
+        </div>
+        <div class="team-column" style="border-color: green;">
+            <h3 style="color: green;">Team Green (<span id="green">0</span>)</h3>
+            <div id="green-devices"></div>
+        </div>
+    </div>
     <br />
     <script>
         var teamIndex = [
@@ -70,6 +116,115 @@
 
         function startListen() {
             socket.send('hello world');
+        }
+
+        let activeTurnId = null;
+
+        // Funzione per creare un nuovo turno
+        async function createTurn() {
+            const turnName = document.getElementById('turnName').value;
+            if (!turnName) {
+                alert('Inserisci un nome per il turno');
+                return;
+            }
+
+            try {
+                const response = await fetch('/turns', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: turnName })
+                });
+                const data = await response.json();
+                activeTurnId = data.id;
+                document.getElementById('closeTurnButton').disabled = false;
+                document.getElementById('turnName').value = '';
+                alert('Turno creato con successo!');
+            } catch (error) {
+                console.error('Error creating turn:', error);
+                alert('Errore nella creazione del turno');
+            }
+        }
+
+        // Funzione per chiudere il turno attivo
+        async function closeTurn() {
+            if (!activeTurnId) {
+                alert('Nessun turno attivo');
+                return;
+            }
+
+            try {
+                await fetch(`/turns/${activeTurnId}`, {
+                    method: 'PATCH'
+                });
+                activeTurnId = null;
+                document.getElementById('closeTurnButton').disabled = true;
+                alert('Turno chiuso con successo!');
+            } catch (error) {
+                console.error('Error closing turn:', error);
+                alert('Errore nella chiusura del turno');
+            }
+        }
+
+        // Funzione per aggiungere un device al turno
+        async function addDeviceToTurn(fingerprint) {
+            if (!activeTurnId) {
+                alert('Nessun turno attivo. Crea prima un nuovo turno.');
+                return;
+            }
+
+            try {
+                await fetch(`/turns/${activeTurnId}/devices/${fingerprint}`, {
+                    method: 'POST'
+                });
+                alert('Device aggiunto al turno!');
+            } catch (error) {
+                console.error('Error adding device to turn:', error);
+                alert('Errore nell\'aggiunta del device al turno');
+            }
+        }
+
+        // Funzione per aggiornare la visualizzazione dei devices
+        function updateDevicesList(team, fingerprint) {
+            const container = document.getElementById(`${team}-devices`);
+            if (!container.querySelector(`[data-fingerprint="${fingerprint}"]`)) {
+                const button = document.createElement('button');
+                button.className = 'device-button';
+                button.setAttribute('data-fingerprint', fingerprint);
+                button.textContent = fingerprint.slice(0, 6);
+                button.onclick = () => addDeviceToTurn(fingerprint);
+                button.style.color = team;
+                container.appendChild(button);
+            }
+        }
+
+        // Modifica la gestione degli eventi WebSocket per aggiornare la visualizzazione
+        socket.onmessage = function (msg) {
+            console.log("onmessage", { _: new Date(), msg });
+
+            var message = JSON.parse(msg.data);
+            console.log("message", { _: new Date(), message });
+
+            switch (message.type) {
+                case 'devices':
+                    console.log('received device from server');
+                    var device = message.data;
+                    if (!devices.find(d => d.fingerprint === device.fingerprint)) {
+                        devices.push(device);
+                        document.getElementById('devicesCount').innerHTML = devices.length;
+                        document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
+                        
+                        var team = device.team;
+                        var fingerprint = device.fingerprint;
+                        if (teams[team].indexOf(fingerprint) === -1) {
+                            teams[team].push(fingerprint);
+                            document.getElementById(team).innerHTML = teams[team].length;
+                            updateDevicesList(team, fingerprint);
+                        }
+                    }
+                    break;
+            }
         }
     </script>
 </body>

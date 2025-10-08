@@ -36,7 +36,7 @@ E' un applicazione Expo / React Native pubblicata su Expo Snacks così da poter 
 
 L'applicazione Expo è composta da unico file frontend/App.js
 
-#### DONE
+#### DONE frontend
 - calcolo del fingerprint del device 
 - assegnazione casuale di team in base al fingerprint
 - funzioni axios per svolgere richieste HTTP al backend
@@ -51,5 +51,35 @@ L'applicazione Expo è composta da unico file frontend/App.js
 - non vi è alcuna animazione dell'acqua che fuoriesce dal beccuccio della borraccia
 - si verifica i permessi per l'utilizzo dell'accelerometro
 - funzione isMyTurn che fa vibrare il telefono e resetta il waterLevel al 100%
+- all'avvio l'applicazione utilizza l'API /devices per comunicare il fingerprint e team di appartenenza
+- svolgere polling su API /polling, quando tale API contiene nell'elenco dei fingerprint per il turno attivo il fingerprint del device corrente attivare isMyTurn
 
-#### TODO
+#### TODO frontend
+- isMyTurn porta il waterLevel al 100% solo la prima volta che il fingerprint compare un certo turnId
+- ogni 10% della riduzione di waterLevel causa la chiamata API PATCH /turns/:turnId/devices/:deviceHash/waterLevel per comunicare l'attuale livello
+
+### backend
+
+E' un applicazione Express.js avviata tramite docker-compose.
+
+#### DONE backend
+- utilizza come database realtime rethinkdb
+- all'interno di index.js si trovano rotte statiche, API e WSS
+- backend/public/index.js implementa la dashboard, tramite WSS riceve la presenza di nuovi device e ne mostra il conteggio per ogni team
+- backend/public/index.html quando riceve un nuovo device tramite onmessage dovrà aggiornare il conteggio solo se è un nuovo fingerprint
+- la tabella devices utilizza il fingerprint come chiave primaria
+- all'avvio di backend/index.js se le tabelle già esistono non devono essere create
+- la tabella devices ha una colonna lastSeenOn che sarà aggiornata ogni volta che un device con un fingerprint già presente svolge la chiamata API a /devices invece che inserire un nuovo device
+- backend/public/index.html deve mostrare quattro colonne, una per team, all'interno un pulsante per ogni fingerprint che mostra i primi 6 caratteri
+- backend/index.js espone una API POST /turns che permetta di creare un nuovo turno, con la corrispondente tabella turns(createdOn, status, name, statusUpdatedOn), lo status di default è "open"
+- backend/index.js espone una API PATCH /turns/:turnId che permetta di cambiare lo stato di un turno da "open" a "closed"
+- backend/index.js espone una API POST /turns/:turnId/devices/:deviceHash che permetta di aggiungere un device ad un turno, con la corrispondente tabella turnsDevices(addedOn, turnId, deviceId)
+- backend/index.js espone una API GET /polling che a partire dal turno in status "open" con statusUpdatedOn più recente ritorna tutti i fingerprint appartenenti a tale turno
+- backend/public/index.html mostra il pulsante per creare un nuovo turno, tramite API POST /turns, e una input di testo per impostare il name del nuovo turno
+- backend/public/index.html mostra il pulsante per cambiare da "open" a "closed" il turno, tramite API PATCH /turns/:turnId
+- backend/public/index.html quando vene cliccato il pusante di un fingerprint, tramite API POST /turns/:turnId/devices/:deviceHash, aggiunge il device al turno
+
+#### TODO backend
+- la tabella turnsDevices ha un attributo waterLevel che indica il livello di acqua rimanente
+- backend/index.js espone una API PATCH /turns/:turnId/devices/:deviceHash/waterLevel che permette di registrare il waterLevel di ogni device durante il turno, accetta aggiornamenti solo se il turno è open
+- backend/public/index.html per il turno attivo recupera la somma dei waterLevel per ogni team e lo mostra nella sua colonna

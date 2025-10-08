@@ -7,7 +7,7 @@ import axios from 'axios';
 import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.6';
+const VERSION = '0.0.8';
 const INTERVAL = 500;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -64,10 +64,10 @@ const requestAccelerometerPermissions = async () => {
 const isMyTurn = (setWaterLevel) => {
   // Imposta un pattern di vibrazione di 1 secondo
   Vibration.vibrate(1000);
-  
+
   // Resetta il livello dell'acqua al 100%
   setWaterLevel(1.0);
-  
+
   return true;
 };
 
@@ -99,6 +99,24 @@ async function devices(team, fingerprint, setError) {
   } catch (e) {
     console.log('POST /devices ERROR', { _: new Date(), team, fingerprint, e });
     setError("POST /devices ERROR: " + e.message);
+  }
+}
+
+// Funzione per il polling dell'API /polling
+async function checkActiveFingerprints(setError) {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/polling`);
+    const turn = response.data.turn;
+    const turnId = turn.id;
+    const turnName = turn.name;
+    const turnStatus = turn.status;
+    console.log('GET /polling', { _: new Date(), turnId, turnName, turnStatus });
+
+    return response.data.fingerprints;
+  } catch (e) {
+    console.log('GET /polling ERROR', { _: new Date(), e });
+    setError("GET /polling ERROR: " + e.message);
+    return null;
   }
 }
 
@@ -195,7 +213,7 @@ function clipRectBelowLine(W, H, m, c) {
   return output;
 }
 
-function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7}) {
+function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }) {
   const W = width;
   const H = height;
   const neckTopY = H * 0.08;
@@ -359,22 +377,34 @@ export default function App() {
 
   // Stato del livello dell'acqua
   const [waterLevel, setWaterLevel] = useState(0.7);
-  
-  // Gestione degli eventi dal backend per attivare il turno del giocatore
+
+  // Polling per controllare se è il turno del dispositivo corrente
   useEffect(() => {
     if (!team || !fingerprint) return;
 
-    const eventHandler = async (event) => {
-      if (event.type === 'turn') {
-        isMyTurn(setWaterLevel);
+    const POLLING_INTERVAL = 2000; // 2 secondi
+    let pollingInterval;
+
+    const checkTurn = async () => {
+      const activeFingerprints = await checkActiveFingerprints(setError);
+
+      if (activeFingerprints && Array.isArray(activeFingerprints)) {
+        // Verifica se il fingerprint corrente è tra quelli attivi
+        if (activeFingerprints.includes(fingerprint)) {
+          console.log('È il mio turno!', { _: new Date(), fingerprint });
+          isMyTurn(setWaterLevel);
+        }
       }
     };
 
-    // Qui potrebbe essere implementata la logica per ricevere gli eventi dal backend
-    // Per esempio utilizzando WebSocket o polling HTTP
-    
+    // Avvia il polling
+    pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
+
+    // Cleanup: ferma il polling quando il componente viene smontato
     return () => {
-      // Cleanup dell'event handler se necessario
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
     };
   }, [team, fingerprint]);
 
