@@ -1,0 +1,77 @@
+<html>
+
+<head>
+    <link rel="shortcut icon" href="/static/favicon.ico">
+    <style>
+        h2 {
+            display: inline;
+        }
+    </style>
+</head>
+
+<body>
+    <button onclick="startListen()">START LISTEN</button>
+    <h2 id="devicesCount"></h2>
+    <h2 id="lastDeviceOn"></h2>
+    <br />
+    <h2 id="blue" style="color: blue"></h2>
+    <h2 id="red" style="color: red"></h2>
+    <h2 id="yellow" style="color: yellow"></h2>
+    <h2 id="green" style="color: green"></h2>
+    <br />
+    <script>
+        var teamIndex = [
+            'blue',
+            'red',
+            'yellow',
+            'green',
+        ];
+
+        var socket = new WebSocket("wss://" + window.location.hostname + "/echo");
+        var devices = [];
+        var teams = {
+            blue: [],
+            red: [],
+            yellow: [],
+            green: [],
+        }
+
+        socket.onopen = function () {
+            console.log("onopen", { _: new Date(), readyState: socket.readyState });
+        }
+
+        socket.onmessage = function (msg) {
+            console.log("onmessage", { _: new Date(), msg });
+
+            var message = JSON.parse(msg.data);
+            console.log("message", { _: new Date(), message });
+
+            switch (message.type) {
+                case 'devices':
+                    console.log('received device from server');
+                    var device = message.data;
+                    devices.push(device);
+                    document.getElementById('devicesCount').innerHTML = devices.length;
+                    document.getElementById('lastDeviceOn').innerHTML = new Date().toISOString();
+                    var _ = new Date();
+                    var team = device.team;
+                    var fingerprint = device.fingerprint;
+                    if (teams[team].indexOf(fingerprint) === -1) {
+                        teams[team].push(fingerprint);
+                        document.getElementById(team).innerHTML = teams[team].length;
+                    }
+                    break;
+            }
+        }
+
+        socket.onclose = function () {
+            console.log("onclose", { _: new Date(), readyState: socket.readyState });
+        }
+
+        function startListen() {
+            socket.send('hello world');
+        }
+    </script>
+</body>
+
+</html>
