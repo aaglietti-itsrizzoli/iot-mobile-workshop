@@ -7,7 +7,7 @@ import axios from 'axios';
 import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.4';
+const VERSION = '0.0.5';
 const INTERVAL = 500;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -28,6 +28,36 @@ const FINGERPRINT_DATA = {
   productName: Device.productName,
   supportedCpuArchitectures: Device.supportedCpuArchitectures,
   totalMemory: Device.totalMemory,
+};
+
+// Funzione per verificare la disponibilità dell'accelerometro
+const checkAccelerometerAvailability = async () => {
+  try {
+    const isAvailable = await Accelerometer.isAvailableAsync();
+    if (!isAvailable) {
+      console.log('Accelerometro non disponibile su questo dispositivo');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Errore nel controllo della disponibilità dell\'accelerometro:', error);
+    return false;
+  }
+};
+
+// Funzione per richiedere i permessi per l'accelerometro (necessario per web mobile)
+const requestAccelerometerPermissions = async () => {
+  try {
+    const { granted } = await Accelerometer.requestPermissionsAsync();
+    if (!granted) {
+      console.log('Permessi accelerometro non concessi. L\'utente potrebbe dover abilitarli nelle impostazioni.');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Errore nella richiesta dei permessi dell\'accelerometro:', error);
+    return false;
+  }
 };
 
 const _ = new Date();
@@ -229,7 +259,21 @@ export default function App() {
   });
   const [subscription, setSubscription] = useState(null);
 
-  const _subscribe = (_team, _fingerprint) => {
+  const _subscribe = async (_team, _fingerprint) => {
+    // Verifica la disponibilità dell'accelerometro
+    const isAvailable = await checkAccelerometerAvailability();
+    if (!isAvailable) {
+      setError("L'accelerometro non è disponibile su questo dispositivo");
+      return;
+    }
+
+    // Richiedi i permessi (necessario per web mobile)
+    const hasPermissions = await requestAccelerometerPermissions();
+    if (!hasPermissions) {
+      setError("I permessi per l'accelerometro sono stati negati. Abilitali nelle impostazioni.");
+      return;
+    }
+
     setSubscription(
       Accelerometer.addListener((acceleremoterData) => {
         setData(acceleremoterData);
@@ -292,7 +336,7 @@ export default function App() {
       const team = teams[higher];
       setTeam(team);
       await devices(team, _, setError);
-      _subscribe(team, _);
+      await _subscribe(team, _);
       Accelerometer.setUpdateInterval(INTERVAL);
       return () => _unsubscribe();
     })();

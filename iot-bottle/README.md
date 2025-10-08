@@ -49,6 +49,7 @@ L'applicazione Expo è composta da unico file frontend/App.js
 - se il telefono è inclinato l'acqua si inclina ed eventualmente fuoriesce dal beccuccio della borraccia
 - l'acqua fuoriesce dal beccuccio solo se parzialmente inclinata permettendo all'aria di entrare
 - non vi è alcuna animazione dell'acqua che fuoriesce dal beccuccio della borraccia
+- si verifica i permessi per l'utilizzo dell'accelerometro
 
 #### TODO
 - aggiun
