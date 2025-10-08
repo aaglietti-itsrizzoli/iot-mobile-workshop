@@ -84,5 +84,6 @@ E' un applicazione Express.js avviata tramite docker-compose.
 - backend/public/index.html ogni volta che arriva un evento turnsDevices aggiorna il waterLevel rimanente, somma dei waterLevel di ogni device, del team visualizzato
 - backend/public/index.html deve mostrare il name del turno attivo se presente, tramite API /polling, ed il numero di devices presenti nel turno
 - backend/public/index.html se un device fa già parte del turno attivo disabilita il pulsante corrispondente
+- backend/public/index.html mostra un calcolo della CO2 risparmiata in base ai litri d'acqua risparmiati dall'acquisto di bottigliette da 0.5l
 
 #### TODO backend

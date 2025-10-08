@@ -124,8 +124,14 @@
 
             // Aggiorna i display
             for (const team in teamWaterLevels) {
+                const waterSaved = teamWaterLevels[team];
+                // Assumendo che ogni unità di waterLevel = 0.5L (una bottiglietta)
+                const bottlesSaved = waterSaved * 0.5;
+                // Calcolo CO2: circa 0.25 kg CO2 per ogni bottiglia da 0.5L risparmiata
+                const co2Saved = bottlesSaved * 0.25;
+                
                 document.getElementById(`${team}-water`).textContent =
-                    teamWaterLevels[team].toFixed(2);
+                    `${waterSaved.toFixed(2)} L (${co2Saved.toFixed(2)} kg CO₂)`;
             }
         }
 
