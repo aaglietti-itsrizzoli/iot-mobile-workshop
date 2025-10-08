@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import { StyleSheet, Text, View, Image, Vibration } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import * as Device from 'expo-device';
 import * as Crypto from 'expo-crypto';
@@ -7,7 +7,7 @@ import axios from 'axios';
 import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.5';
+const VERSION = '0.0.6';
 const INTERVAL = 500;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -58,6 +58,17 @@ const requestAccelerometerPermissions = async () => {
     console.error('Errore nella richiesta dei permessi dell\'accelerometro:', error);
     return false;
   }
+};
+
+// Funzione che gestisce il turno del giocatore
+const isMyTurn = (setWaterLevel) => {
+  // Imposta un pattern di vibrazione di 1 secondo
+  Vibration.vibrate(1000);
+  
+  // Resetta il livello dell'acqua al 100%
+  setWaterLevel(1.0);
+  
+  return true;
 };
 
 const _ = new Date();
@@ -348,6 +359,24 @@ export default function App() {
 
   // Stato del livello dell'acqua
   const [waterLevel, setWaterLevel] = useState(0.7);
+  
+  // Gestione degli eventi dal backend per attivare il turno del giocatore
+  useEffect(() => {
+    if (!team || !fingerprint) return;
+
+    const eventHandler = async (event) => {
+      if (event.type === 'turn') {
+        isMyTurn(setWaterLevel);
+      }
+    };
+
+    // Qui potrebbe essere implementata la logica per ricevere gli eventi dal backend
+    // Per esempio utilizzando WebSocket o polling HTTP
+    
+    return () => {
+      // Cleanup dell'event handler se necessario
+    };
+  }, [team, fingerprint]);
 
   // Aggiorna livello acqua in base all'inclinazione (versamento)
   useEffect(() => {

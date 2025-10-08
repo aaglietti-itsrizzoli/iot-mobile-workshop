@@ -50,6 +50,6 @@ L'applicazione Expo è composta da unico file frontend/App.js
 - l'acqua fuoriesce dal beccuccio solo se parzialmente inclinata permettendo all'aria di entrare
 - non vi è alcuna animazione dell'acqua che fuoriesce dal beccuccio della borraccia
 - si verifica i permessi per l'utilizzo dell'accelerometro
+- funzione isMyTurn che fa vibrare il telefono e resetta il waterLevel al 100%
 
 #### TODO
-- aggiun
