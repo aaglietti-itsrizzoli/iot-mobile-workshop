@@ -7,7 +7,7 @@ import axios from 'axios';
 import Svg, { Defs, ClipPath, Path, Rect, Polygon, G, Circle } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.0.2';
+const VERSION = '0.0.3';
 const INTERVAL = 100;
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -154,7 +154,7 @@ function clipRectBelowLine(W, H, m, c) {
   return output;
 }
 
-function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7, pourRate = 0 }) {
+function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7}) {
   const W = width;
   const H = height;
   const neckTopY = H * 0.08;
@@ -192,9 +192,6 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7, pourRate 
   const waterPoly = clipRectBelowLine(W, H, clamp(m, -50, 50), c);
   const waterPoints = waterPoly.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
-  // lunghezza del flusso in funzione della portata
-  const streamLen = 40 + 160 * clamp(pourRate / 0.25, 0, 1);
-
   return (
     <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
       <Defs>
@@ -220,26 +217,6 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7, pourRate 
         strokeWidth={1}
         opacity={0.7}
       />
-
-      {/* Flusso se sta versando */}
-      {pourRate > 0 && (
-        <G>
-          <Rect
-            x={spoutX}
-            y={spoutY}
-            width={6}
-            height={streamLen}
-            fill="#2ca6dd"
-            transform={`rotate(${clamp(rollDeg, -70, 70)} ${spoutX} ${spoutY})`}
-          />
-          <Circle
-            cx={spoutX + Math.sin((rollDeg * Math.PI) / 180) * streamLen}
-            cy={spoutY + Math.cos((rollDeg * Math.PI) / 180) * streamLen}
-            r={5}
-            fill="#2ca6dd"
-          />
-        </G>
-      )}
     </Svg>
   );
 }
@@ -338,8 +315,7 @@ export default function App() {
     setWaterLevel((prev) => clamp(prev - ratePerSec * dt, 0, 1));
   }, [x, y, z]);
 
-  const { angleFromVerticalDeg, rollDeg } = computeOrientation({ x, y, z });
-  const pourRate = computePourRate(angleFromVerticalDeg);
+  const { rollDeg } = computeOrientation({ x, y, z });
 
   return (
     <View style={styles.container}>
@@ -368,7 +344,7 @@ export default function App() {
 
       {/* Borraccia con acqua animata */}
       <View style={styles.bottleWrapper}>
-        <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} pourRate={pourRate} />
+        <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} />
       </View>
     </View>
   );
