@@ -182,7 +182,6 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7}) {
 
   // beccuccio (posizione approssimata per il flusso)
   const spoutX = neckRightX;
-  const spoutY = (neckTopY + neckBottomY) / 2;
 
   // Calcolo poligono "acqua" come metà piano sotto la retta di pendenza rollDeg
   const m = Math.tan((rollDeg * Math.PI) / 180);
