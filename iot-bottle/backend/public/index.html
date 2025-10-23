@@ -232,6 +232,7 @@
 
         socket.onclose = function () {
             console.log("onclose", { _: new Date(), readyState: socket.readyState });
+            alert("socket.onclose");
         }
 
         function startListen() {
