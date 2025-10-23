@@ -189,9 +189,9 @@ function computeOrientation({ x, y, z }) {
 }
 
 function computePourRate(angleFromVerticalDeg, optimalAngle) {
-  // versa solo tra 30° e 120°: sufficiente per far entrare aria, ma non "a testa in giù"
-  const minA = 30;
-  const maxA = 120;
+  // versa solo tra 0° e 180°: sufficiente per far entrare aria, ma non "a testa in giù"
+  const minA = 0;
+  const maxA = 180;
   if (angleFromVerticalDeg < minA || angleFromVerticalDeg > maxA) return 0;
 
   // Calcola quanto siamo vicini all'angolo ottimale (±3 gradi)
@@ -497,8 +497,8 @@ export default function App() {
 
   // Funzione per generare un nuovo angolo ottimale casuale
   const generateNewOptimalAngle = () => {
-    // Genera un angolo casuale tra 40° e 110°
-    return Math.floor(Math.random() * (110 - 40 + 1)) + 40;
+    // Genera un angolo casuale tra 20° e 170°
+    return Math.floor(Math.random() * (170 - 20 + 1)) + 20;
   };
 
   // Invia l'aggiornamento del waterLevel al server
