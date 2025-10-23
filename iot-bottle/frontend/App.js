@@ -193,12 +193,10 @@ function computePourRate(angleFromVerticalDeg, optimalAngle) {
   const maxA = 120;
   if (angleFromVerticalDeg < minA || angleFromVerticalDeg > maxA) return 0;
 
-  // Calcola quanto siamo vicini all'angolo ottimale (±5 gradi)
-  const tolerance = 5;
-  const distanceFromOptimal = Math.abs(angleFromVerticalDeg - optimalAngle);
-  
+  // Calcola quanto siamo vicini all'angolo ottimale (±3 gradi)
+  const tolerance = 3;  
   // Se siamo fuori dalla tolleranza, versa più rapidamente
-  if (distanceFromOptimal > tolerance) {
+  if (((optimalAngle-tolerance) < angleFromVerticalDeg) && (angleFromVerticalDeg < (optimalAngle+tolerance))) {
     // normalizza 0..1 tra minA e 90° (~versata massima), poi decresce fino a maxA
     let t;
     if (angleFromVerticalDeg <= 90) {
@@ -548,11 +546,11 @@ export default function App() {
       </Text>
       <Text style={styles.text}>loaded on {_.toISOString()}</Text>
       <Text style={styles.text}>now is {now.toISOString()}</Text>
-      <Text style={styles.text}>waterLevel is {waterLevel}</Text>
-      <Text style={styles.text}>angleFromVerticalDeg is {angleFromVerticalDeg}</Text>
-      <Text style={styles.text}>rollDeg is {rollDeg}</Text>
-      <Text style={styles.text}>ratePerSec is {ratePerSec}</Text>
-      <Text style={styles.text}>Angolo ottimale: {optimalAngle}°</Text>
+      {/*<Text style={styles.text}>waterLevel is {waterLevel}</Text>*/}
+      {/*<Text style={styles.text}>angleFromVerticalDeg is {angleFromVerticalDeg}</Text>*/}
+      {/*<Text style={styles.text}>rollDeg is {rollDeg}</Text>*/}
+      {/*<Text style={styles.text}>ratePerSec is {ratePerSec}</Text>*/}
+      {/*<Text style={styles.text}>optimalAngle: {optimalAngle}</Text>*/}
       {error ? <Text style={styles.text}>Error is {error}</Text> : null}
       <Text style={styles.text}>
         accelerometer data is in gs where 1g = 9.81 m/s^2
