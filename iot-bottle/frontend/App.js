@@ -43,15 +43,15 @@ const checkAccelerometerAvailability = async () => {
   try {
     const isAvailable = await Accelerometer.isAvailableAsync();
     if (!isAvailable) {
-      console.log('Accelerometro non disponibile su questo dispositivo');
+      // console.log('Accelerometro non disponibile su questo dispositivo');
       return false;
     }
     return true;
   } catch (error) {
-    console.error(
+    /*console.error(
       "Errore nel controllo della disponibilità dell'accelerometro:",
       error
-    );
+    );*/
     return false;
   }
 };
@@ -61,17 +61,17 @@ const requestAccelerometerPermissions = async () => {
   try {
     const { granted } = await Accelerometer.requestPermissionsAsync();
     if (!granted) {
-      console.log(
+      /*console.log(
         "Permessi accelerometro non concessi. L'utente potrebbe dover abilitarli nelle impostazioni."
-      );
+      );*/
       return false;
     }
     return true;
   } catch (error) {
-    console.error(
+    /*console.error(
       "Errore nella richiesta dei permessi dell'accelerometro:",
       error
-    );
+    );*/
     return false;
   }
 };
@@ -85,7 +85,7 @@ const startMyTurn = async (turnId, deviceHash, setWaterLevel, setError) => {
     // Invia il waterLevel iniziale
     await axios.patch(url, { waterLevel: 1 });
   } catch (error) {
-    console.error('Error in startMyTurn:', { url, error });
+    //console.error('Error in startMyTurn:', { url, error });
     setError('PATCH /waterLEvel ERROR: ' + error.message);
   }
 
@@ -96,7 +96,7 @@ const startMyTurn = async (turnId, deviceHash, setWaterLevel, setError) => {
 };
 
 const _ = new Date();
-console.log('App loaded', _);
+//console.log('App loaded', _);
 
 const GITHUB_CODESPACE_NAME = 'fluffy-xylophone-xg7jv9vx5vqcv666';
 const API_BASE_URL = `https://${GITHUB_CODESPACE_NAME}-3000.app.github.dev`;
@@ -123,7 +123,7 @@ async function devices(team, fingerprint, setError) {
     });
     */
   } catch (e) {
-    console.log('POST /devices ERROR', { _: new Date(), team, fingerprint, e });
+    //console.log('POST /devices ERROR', { _: new Date(), team, fingerprint, e });
     setError('POST /devices ERROR: ' + e.message);
   }
 }
@@ -139,7 +139,7 @@ async function polling(setError) {
       };
     }
   } catch (e) {
-    console.log('GET /polling ERROR', { _: new Date(), e });
+    //console.log('GET /polling ERROR', { _: new Date(), e });
     setError('GET /polling ERROR: ' + e.message);
   }
   return {
@@ -149,7 +149,7 @@ async function polling(setError) {
 
 async function events(team, fingerprint, event) {
   const path = `/devices/${fingerprint}/events`;
-  console.log(`POST ${path}`, { _: new Date(), team, fingerprint, event });
+  //console.log(`POST ${path}`, { _: new Date(), team, fingerprint, event });
 
   await axios.post(
     `${API_BASE_URL}${path}`,
@@ -162,13 +162,14 @@ async function events(team, fingerprint, event) {
       headers: {},
     }
   );
-
+  /*
   console.log(`POST ${path} completed`, {
     _: new Date(),
     team,
     fingerprint,
     event,
   });
+  */
 }
 
 // --- Helpers per calcolo angoli/versamento ---
@@ -443,17 +444,17 @@ export default function App() {
 
             if (isTurnActive && !isCurrentlyMyTurn) {
               // Inizio del turno
-              console.log('È il mio turno!', { _: new Date(), fingerprint });
+              //console.log('È il mio turno!', { _: new Date(), fingerprint });
               isCurrentlyMyTurn = true;
               setActiveTurnId(turnId);
               // Genera un nuovo angolo ottimale all'inizio del turno
               const newAngle = generateNewOptimalAngle();
               setOptimalAngle(newAngle);
-              console.log('Nuovo angolo ottimale:', newAngle);
+              //console.log('Nuovo angolo ottimale:', newAngle);
               startMyTurn(turnId, fingerprint, setWaterLevel, setError);
             } else if (!isTurnActive && isCurrentlyMyTurn) {
               // Fine del turno
-              console.log('Turno terminato', { _: new Date(), fingerprint });
+              //console.log('Turno terminato', { _: new Date(), fingerprint });
               isCurrentlyMyTurn = false;
               Vibration.cancel(); // Ferma la vibrazione
               setActiveTurnId(null);
@@ -462,17 +463,19 @@ export default function App() {
             }
           } else if (isCurrentlyMyTurn) {
             // Nessun turno attivo mentre era il mio turno
+            /*
             console.log('Turno terminato (nessun turno attivo)', {
               _: new Date(),
               fingerprint,
             });
+            */
             isCurrentlyMyTurn = false;
             Vibration.cancel(); // Ferma la vibrazione
             setActiveTurnId(null);
           }
         }
       } catch (error) {
-        console.error('Error in checkTurn:', error);
+        //console.error('Error in checkTurn:', error);
         setError('Error checking turn: ' + error.message);
       }
     };
@@ -509,7 +512,7 @@ export default function App() {
       );
       setLastReportedLevel(newLevel);
     } catch (error) {
-      console.error('Error reporting water level:', error);
+      //console.error('Error reporting water level:', error);
     }
   };
 
