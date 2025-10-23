@@ -90,7 +90,7 @@ app.patch('/turns/:turnId', async (req, res) => {
             })
             .run(conn);
 
-        console.log('turn status updated', { _: new Date(), turnId, status: newStatus });
+        // console.log('turn status updated', { _: new Date(), turnId, status: newStatus });
         res.send('');
     } catch (err) {
         console.error('Error updating turn status:', err);
@@ -145,7 +145,7 @@ app.patch('/turns/:turnId/devices/:deviceHash/waterLevel', async (req, res) => {
             .update({ waterLevel })
             .run(conn);
 
-        console.log('waterLevel updated', { _: new Date(), turnId, deviceHash, waterLevel });
+        // console.log('waterLevel updated', { _: new Date(), turnId, deviceHash, waterLevel });
         res.send('');
     } catch (err) {
         console.error('Error updating waterLevel:', err);
@@ -187,9 +187,9 @@ app.get('/polling', async (req, res) => {
 });
 
 app.ws('/echo', function (ws, req) {
-    console.log('WSS /echo connected', { _: new Date(), req })
+    // console.log('WSS /echo connected', { _: new Date(), req })
     ws.on('message', function (msg) {
-        console.log('WSS /echo onmessage', { _: new Date(), msg })
+        // console.log('WSS /echo onmessage', { _: new Date(), msg })
         r.table('devices').changes().run(conn, function (err, cursor) {
             if (err) {
                 console.log('error getting devices changefeed', { _: new Date(), err })
