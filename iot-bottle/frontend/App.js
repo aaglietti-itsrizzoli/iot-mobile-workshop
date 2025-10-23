@@ -187,21 +187,32 @@ function computeOrientation({ x, y, z }) {
   return { angleFromVerticalDeg, rollDeg, pitchDeg };
 }
 
-function computePourRate(angleFromVerticalDeg) {
+function computePourRate(angleFromVerticalDeg, optimalAngle) {
   // versa solo tra 30° e 120°: sufficiente per far entrare aria, ma non "a testa in giù"
   const minA = 30;
   const maxA = 120;
   if (angleFromVerticalDeg < minA || angleFromVerticalDeg > maxA) return 0;
-  // normalizza 0..1 tra minA e 90° (~versata massima), poi decresce fino a maxA
-  let t;
-  if (angleFromVerticalDeg <= 90) {
-    t = (angleFromVerticalDeg - minA) / (90 - minA);
-  } else {
-    t = (maxA - angleFromVerticalDeg) / (maxA - 90);
+
+  // Calcola quanto siamo vicini all'angolo ottimale (±5 gradi)
+  const tolerance = 5;
+  const distanceFromOptimal = Math.abs(angleFromVerticalDeg - optimalAngle);
+  
+  // Se siamo fuori dalla tolleranza, versa più rapidamente
+  if (distanceFromOptimal > tolerance) {
+    // normalizza 0..1 tra minA e 90° (~versata massima), poi decresce fino a maxA
+    let t;
+    if (angleFromVerticalDeg <= 90) {
+      t = (angleFromVerticalDeg - minA) / (90 - minA);
+    } else {
+      t = (maxA - angleFromVerticalDeg) / (maxA - 90);
+    }
+    t = clamp(t, 0, 1);
+    const maxPerSec = 0.25; // percentuale di volume al secondo alla massima inclinazione
+    return t * maxPerSec;
   }
-  t = clamp(t, 0, 1);
-  const maxPerSec = 0.25; // percentuale di volume al secondo alla massima inclinazione
-  return t * maxPerSec;
+  
+  // Se siamo dentro la tolleranza, nessun versamento
+  return 0;
 }
 
 // Clipping half-plane (sotto la retta y = m x + c) di un rettangolo W x H
@@ -437,6 +448,10 @@ export default function App() {
               console.log('È il mio turno!', { _: new Date(), fingerprint });
               isCurrentlyMyTurn = true;
               setActiveTurnId(turnId);
+              // Genera un nuovo angolo ottimale all'inizio del turno
+              const newAngle = generateNewOptimalAngle();
+              setOptimalAngle(newAngle);
+              console.log('Nuovo angolo ottimale:', newAngle);
               startMyTurn(turnId, fingerprint, setWaterLevel, setError);
             } else if (!isTurnActive && isCurrentlyMyTurn) {
               // Fine del turno
@@ -477,6 +492,13 @@ export default function App() {
   }, [team, fingerprint]); // Mantiene traccia dell'ultimo livello di acqua riportato al server
   const [lastReportedLevel, setLastReportedLevel] = useState(1.0);
   const [activeTurnId, setActiveTurnId] = useState(null);
+  const [optimalAngle, setOptimalAngle] = useState(60);
+
+  // Funzione per generare un nuovo angolo ottimale casuale
+  const generateNewOptimalAngle = () => {
+    // Genera un angolo casuale tra 40° e 110°
+    return Math.floor(Math.random() * (110 - 40 + 1)) + 40;
+  };
 
   // Invia l'aggiornamento del waterLevel al server
   const reportWaterLevel = async (newLevel) => {
@@ -496,7 +518,7 @@ export default function App() {
   // Aggiorna livello acqua in base all'inclinazione (versamento)
   useEffect(() => {
     const { angleFromVerticalDeg } = computeOrientation({ x, y, z });
-    const ratePerSec = computePourRate(angleFromVerticalDeg);
+    const ratePerSec = computePourRate(angleFromVerticalDeg, optimalAngle);
     if (ratePerSec <= 0) return; // niente versamento
     const dt = INTERVAL / 1000;
 
@@ -512,7 +534,8 @@ export default function App() {
     });
   }, [x, y, z]);
 
-  const { rollDeg } = computeOrientation({ x, y, z });
+  const { rollDeg, angleFromVerticalDeg } = computeOrientation({ x, y, z });
+  const ratePerSec = computePourRate(angleFromVerticalDeg, optimalAngle);
 
   return (
     <View style={styles.container}>
@@ -526,6 +549,10 @@ export default function App() {
       <Text style={styles.text}>loaded on {_.toISOString()}</Text>
       <Text style={styles.text}>now is {now.toISOString()}</Text>
       <Text style={styles.text}>waterLevel is {waterLevel}</Text>
+      <Text style={styles.text}>angleFromVerticalDeg is {angleFromVerticalDeg}</Text>
+      <Text style={styles.text}>rollDeg is {rollDeg}</Text>
+      <Text style={styles.text}>ratePerSec is {ratePerSec}</Text>
+      <Text style={styles.text}>Angolo ottimale: {optimalAngle}°</Text>
       {error ? <Text style={styles.text}>Error is {error}</Text> : null}
       <Text style={styles.text}>
         accelerometer data is in gs where 1g = 9.81 m/s^2
