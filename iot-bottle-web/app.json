@@ -20,10 +20,8 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "experiments": {
-        "baseUrl": "/iot-mobile-workshop"
-      },
       "output": "single",
+      "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -39,7 +37,8 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": true,
+      "baseUrl": "/iot-mobile-workshop"
     }
   }
 }
