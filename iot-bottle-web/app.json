@@ -20,6 +20,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "experiments": {
+        "baseUrl": "/iot-mobile-workshop"
+      },
       "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
