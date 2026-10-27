@@ -2,7 +2,7 @@ name: Deploy Expo web to Pages
 on:
   push:
     branches: [master]
-    paths: ["iot-bottle-web/**"]
+    paths: ["iot-bottle-web/**", ".github/workflows/expo2pages.yml"]
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - run: npm install
         working-directory: iot-bottle-web
       - run: npx expo export -p web
