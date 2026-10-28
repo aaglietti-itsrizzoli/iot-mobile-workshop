@@ -62,10 +62,10 @@ function subscribeWeb(
   onData: (d: Accel) => void,
   intervalMs: number
 ): { remove: () => void } {
-  console.log("subscribeWeb", {_: new Date()});
+  // console.log("subscribeWeb", {_: new Date()});
   let last = 0;
   const handler = (event: Event) => {
-    console.log("subscribeWeb / handler", event);
+    // console.log("subscribeWeb / handler", event);
     const e = event as DeviceMotionEvent;
     const acc = e.accelerationIncludingGravity;
     if (!acc) return; // senza gravità non possiamo calcolare l'orientamento
@@ -373,7 +373,7 @@ export default function Index() {
   // Callback condivisa: aggiorna stato e serie storiche, indipendentemente
   // dalla sorgente dei dati (native expo-sensors vs web DeviceMotion).
   const handleAccel = (d: Accel) => {
-    console.log("handleAccel", d);
+    // console.log("handleAccel", d);
     setData(d);
     const now2 = new Date();
     setChartDataX((prevState) => [
