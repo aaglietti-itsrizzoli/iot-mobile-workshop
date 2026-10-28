@@ -23,7 +23,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 const INTERVAL = 500;
 
 // Accelerazione di gravità: serve per normalizzare i dati del web
@@ -214,7 +214,7 @@ function computePourRate(angleFromVerticalDeg: number, optimalAngle: number): nu
   const maxA = 180;
   if (angleFromVerticalDeg < minA || angleFromVerticalDeg > maxA) return 0;
 
-  const tolerance = 3;
+  const tolerance = 10;
   if (
     optimalAngle - tolerance < angleFromVerticalDeg &&
     angleFromVerticalDeg < optimalAngle + tolerance
