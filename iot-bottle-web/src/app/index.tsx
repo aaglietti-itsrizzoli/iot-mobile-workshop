@@ -519,10 +519,10 @@ export default function Index() {
       }
     };
 
-    //const pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
+    const pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
 
     return () => {
-      //clearInterval(pollingInterval);
+      clearInterval(pollingInterval);
       Vibration.cancel();
     };
   }, [team, fingerprint]);
