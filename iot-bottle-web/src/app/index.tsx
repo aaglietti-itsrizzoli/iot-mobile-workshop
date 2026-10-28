@@ -23,7 +23,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.5';
+const VERSION = '0.1.6';
 const INTERVAL = 500;
 
 // Accelerazione di gravità: serve per normalizzare i dati del web
@@ -215,19 +215,14 @@ function computePourRate(angleFromVerticalDeg: number, optimalAngle: number): nu
   if (angleFromVerticalDeg < minA || angleFromVerticalDeg > maxA) return 0;
 
   const tolerance = 10;
+  const RATE_PER_SEC = 0.25; // frazione di volume svuotata al secondo (costante)
+
+  // Versa a velocità costante SOLO se l'inclinazione è entro ±tolerance dal target.
   if (
     optimalAngle - tolerance < angleFromVerticalDeg &&
     angleFromVerticalDeg < optimalAngle + tolerance
   ) {
-    let t: number;
-    if (angleFromVerticalDeg <= 90) {
-      t = (angleFromVerticalDeg - minA) / (90 - minA);
-    } else {
-      t = (maxA - angleFromVerticalDeg) / (maxA - 90);
-    }
-    t = clamp(t, 0, 1);
-    const maxPerSec = 0.25;
-    return t * maxPerSec;
+    return RATE_PER_SEC;
   }
 
   return 0;
