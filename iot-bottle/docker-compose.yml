@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
   backend:
     image: node:20.10.0-bookworm-slim
@@ -10,15 +8,26 @@ services:
     volumes:
       - ./backend:/home/node/app
     command: "npm start"
-    links:
-      - rethinkdb:db
     ports:
       - "3000:3000"
+    depends_on:
+      rethinkdb:
+        condition: service_healthy # Attende che RethinkDB sia pronto al 100%
+    network_mode: "host" # Condivide la rete dell'host di Codespaces
+
   rethinkdb:
     image: rethinkdb:2.4.4-bookworm-slim
+    network_mode: "host" # Condivide la rete dell'host di Codespaces
     environment:
       - TZ=Europe/Amsterdam
     ports:
       - "8080:8080"
     volumes:
       - /data
+    command: rethinkdb --bind all
+    healthcheck: # Controlla se la porta 28015 risponde
+      test: ["CMD", "timeout", "2", "bash", "-c", "</dev/tcp/127.0.0.1/28015"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 5s

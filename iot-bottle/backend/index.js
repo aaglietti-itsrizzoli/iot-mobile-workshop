@@ -265,7 +265,7 @@ async function initializeDatabase(conn) {
     }
 }
 
-r.connect({ host: 'db', port: 28015 }, async function (err, _conn) {
+r.connect({ host: '127.0.0.1', port: 28015 }, async function (err, _conn) {
     if (err) throw err;
     conn = _conn;
     console.log('rethink db connection created', { _: new Date(), conn });
