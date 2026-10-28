@@ -603,8 +603,8 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   tinyLogo: {
-    width: 250,
-    height: 250,
+    width: 25,
+    height: 25,
   },
   bottleWrapper: {
     marginTop: 10,
