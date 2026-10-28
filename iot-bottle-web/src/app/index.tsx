@@ -1,6 +1,14 @@
 // src/app/index.tsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, Vibration, Button } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  Vibration,
+  Button,
+  Platform,
+} from 'react-native';
 import { Accelerometer, AccelerometerMeasurement } from 'expo-sensors';
 import * as Device from 'expo-device';
 import * as Crypto from 'expo-crypto';
@@ -15,8 +23,12 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.1';
+const VERSION = '0.1.3';
 const INTERVAL = 500;
+
+// Accelerazione di gravità: serve per normalizzare i dati del web
+// (DeviceMotion restituisce m/s^2) alla convenzione "in g" usata da expo-sensors.
+const G_FORCE = 9.81;
 
 const FINGERPRINT_DATA = {
   brand: Device.brand,
@@ -39,8 +51,53 @@ const FINGERPRINT_DATA = {
   totalMemory: Device.totalMemory,
 };
 
+type Accel = { x: number; y: number; z: number };
+
+// ---------------------------------------------------------------------------
+// Backup web: DeviceMotion API del browser
+// expo-sensors 58 ha l'implementazione web rotta (addListener non è una funzione),
+// quindi sul web usiamo direttamente window.addEventListener('devicemotion', ...).
+// ---------------------------------------------------------------------------
+function subscribeWeb(
+  onData: (d: Accel) => void,
+  intervalMs: number
+): { remove: () => void } {
+  console.log("subscribeWeb", {_: new Date()});
+  let last = 0;
+  const handler = (event: Event) => {
+    console.log("subscribeWeb / handler", event);
+    const e = event as DeviceMotionEvent;
+    const acc = e.accelerationIncludingGravity;
+    if (!acc) return; // senza gravità non possiamo calcolare l'orientamento
+    const t = Date.now();
+    if (t - last < intervalMs) return; // throttle ~ come setUpdateInterval su native
+    last = t;
+    // NB: la DeviceMotion API restituisce m/s^2; dividiamo per G per avere valori "in g".
+    // NB2: la convenzione dei segni degli assi sul web può differire da quella nativa
+    //      di expo-sensors; se la borraccia si versa al contrario, invertire qui il
+    //      segno (es. z: -(acc.z ?? 0) / G) finché il comportamento combacia.
+    onData({
+      x: (acc.x ?? 0) / G_FORCE,
+      y: (acc.y ?? 0) / G_FORCE,
+      z: (acc.z ?? 0) / G_FORCE,
+    });
+  };
+  window.addEventListener('devicemotion', handler, true);
+  return {
+    remove: () => window.removeEventListener('devicemotion', handler, true),
+  };
+}
+
 // Funzione per verificare la disponibilità dell'accelerometro
 const checkAccelerometerAvailability = async (): Promise<boolean> => {
+  if (Platform.OS === 'web') {
+    // Sul web verifichiamo la presenza della DeviceMotion API invece di
+    // interrogare expo-sensors (che qui è bugato).
+    return (
+      typeof window !== 'undefined' &&
+      typeof (window as any).DeviceMotionEvent !== 'undefined'
+    );
+  }
   try {
     const isAvailable = await Accelerometer.isAvailableAsync();
     return !!isAvailable;
@@ -51,6 +108,22 @@ const checkAccelerometerAvailability = async (): Promise<boolean> => {
 
 // Funzione per richiedere i permessi per l'accelerometro (necessario per web mobile)
 const requestAccelerometerPermissions = async (): Promise<boolean> => {
+  if (Platform.OS === 'web') {
+    const DME: any =
+      typeof window !== 'undefined' ? (window as any).DeviceMotionEvent : undefined;
+    // iOS 13+ Safari: il permesso ai sensori di movimento va richiesto esplicitamente,
+    // e SOLO in risposta a un gesto utente (per questo lo lanciamo dal bottone).
+    if (DME && typeof DME.requestPermission === 'function') {
+      try {
+        const res = await DME.requestPermission();
+        return res === 'granted';
+      } catch {
+        return false;
+      }
+    }
+    // Altri browser (Android/Chrome, desktop): nessun permesso esplicito necessario.
+    return true;
+  }
   try {
     const { granted } = await Accelerometer.requestPermissionsAsync();
     return !!granted;
@@ -270,7 +343,7 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }: BottleP
 export default function Index() {
   const [sensorsReady, setSensorsReady] = useState<boolean>(false);
   const now = new Date();
-  const [{ x, y, z }, setData] = useState<{ x: number; y: number; z: number }>({
+  const [{ x, y, z }, setData] = useState<Accel>({
     x: 0,
     y: 0,
     z: 0,
@@ -297,6 +370,32 @@ export default function Index() {
     }
   };
 
+  // Callback condivisa: aggiorna stato e serie storiche, indipendentemente
+  // dalla sorgente dei dati (native expo-sensors vs web DeviceMotion).
+  const handleAccel = (d: Accel) => {
+    console.log("handleAccel", d);
+    setData(d);
+    const now2 = new Date();
+    setChartDataX((prevState) => [
+      ...(prevState.length > RETENTION
+        ? prevState.slice(prevState.length - RETENTION)
+        : prevState),
+      { x: now2, y: d.x },
+    ]);
+    setChartDataY((prevState) => [
+      ...(prevState.length > RETENTION
+        ? prevState.slice(prevState.length - RETENTION)
+        : prevState),
+      { x: now2, y: d.y },
+    ]);
+    setChartDataZ((prevState) => [
+      ...(prevState.length > RETENTION
+        ? prevState.slice(prevState.length - RETENTION)
+        : prevState),
+      { x: now2, y: d.z },
+    ]);
+  };
+
   const _subscribe = async (_team: string | null, _fingerprint: string) => {
     const isAvailable = await checkAccelerometerAvailability();
     if (!isAvailable) {
@@ -312,30 +411,18 @@ export default function Index() {
       return;
     }
 
-    setSubscription(
-      Accelerometer.addListener((acceleremoterData: AccelerometerMeasurement) => {
-        setData(acceleremoterData);
-        const now2 = new Date();
-        setChartDataX((prevState) => [
-          ...(prevState.length > RETENTION
-            ? prevState.slice(prevState.length - RETENTION)
-            : prevState),
-          { x: now2, y: acceleremoterData.x },
-        ]);
-        setChartDataY((prevState) => [
-          ...(prevState.length > RETENTION
-            ? prevState.slice(prevState.length - RETENTION)
-            : prevState),
-          { x: now2, y: acceleremoterData.y },
-        ]);
-        setChartDataZ((prevState) => [
-          ...(prevState.length > RETENTION
-            ? prevState.slice(prevState.length - RETENTION)
-            : prevState),
-          { x: now2, y: acceleremoterData.z },
-        ]);
-      })
-    );
+    if (Platform.OS === 'web') {
+      // Backup web: DeviceMotion API del browser (expo-sensors 58 è rotto sul web)
+      setSubscription(subscribeWeb(handleAccel, INTERVAL));
+    } else {
+      // Native: usa expo-sensors come previsto
+      Accelerometer.setUpdateInterval(INTERVAL);
+      setSubscription(
+        Accelerometer.addListener((acceleremoterData: AccelerometerMeasurement) =>
+          handleAccel(acceleremoterData)
+        )
+      );
+    }
   };
 
   const _unsubscribe = () => {
@@ -364,8 +451,8 @@ export default function Index() {
       const teamResolved = teams[higher];
       setTeam(teamResolved);
       await devices(teamResolved, digest, setError);
-      // await _subscribe(teamResolved, digest);
-      Accelerometer.setUpdateInterval(INTERVAL);
+      // La subscription viene avviata dal bottone (handleEnableSensors):
+      // su iOS web il permesso DeviceMotion richiede un gesto utente.
     })();
 
     return () => _unsubscribe();
