@@ -1,6 +1,6 @@
 // src/app/index.tsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Image, Vibration } from 'react-native';
+import { StyleSheet, Text, View, Image, Vibration, Button } from 'react-native';
 import { Accelerometer, AccelerometerMeasurement } from 'expo-sensors';
 import * as Device from 'expo-device';
 import * as Crypto from 'expo-crypto';
@@ -15,7 +15,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const INTERVAL = 500;
 
 const FINGERPRINT_DATA = {
@@ -268,6 +268,7 @@ function Bottle({ width = 240, height = 420, rollDeg = 0, level = 0.7 }: BottleP
 }
 
 export default function Index() {
+  const [sensorsReady, setSensorsReady] = useState<boolean>(false);
   const now = new Date();
   const [{ x, y, z }, setData] = useState<{ x: number; y: number; z: number }>({
     x: 0,
@@ -288,6 +289,13 @@ export default function Index() {
   const [lastReportedLevel, setLastReportedLevel] = useState<number>(1.0);
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
   const [optimalAngle, setOptimalAngle] = useState<number>(60);
+
+  const handleEnableSensors = async () => {
+    if (team && fingerprint) {
+      await _subscribe(team, fingerprint);
+      setSensorsReady(true);
+    }
+  };
 
   const _subscribe = async (_team: string | null, _fingerprint: string) => {
     const isAvailable = await checkAccelerometerAvailability();
@@ -356,7 +364,7 @@ export default function Index() {
       const teamResolved = teams[higher];
       setTeam(teamResolved);
       await devices(teamResolved, digest, setError);
-      await _subscribe(teamResolved, digest);
+      // await _subscribe(teamResolved, digest);
       Accelerometer.setUpdateInterval(INTERVAL);
     })();
 
@@ -424,10 +432,10 @@ export default function Index() {
       }
     };
 
-    const pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
+    //const pollingInterval = setInterval(checkTurn, POLLING_INTERVAL);
 
     return () => {
-      clearInterval(pollingInterval);
+      //clearInterval(pollingInterval);
       Vibration.cancel();
     };
   }, [team, fingerprint]);
@@ -451,38 +459,47 @@ export default function Index() {
 
   const { rollDeg, angleFromVerticalDeg } = computeOrientation({ x, y, z });
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image style={styles.tinyLogo} source={require('../../assets/itsar/logo.png')} />
+  if (!sensorsReady) {
+    return (
+      <View style={styles.container}>
+        <Button title="Attiva Accelerometro" onPress={handleEnableSensors} />
+        {error ? <Text>Error is {error}</Text> : null}
       </View>
-      <Text style={styles.text}>v {VERSION}</Text>
-      <Text style={{ ...styles.text, fontSize: 18, color: team ?? undefined }}>
-        {fingerprint}
-      </Text>
-      <Text style={styles.text}>loaded on {_.toISOString()}</Text>
-      <Text style={styles.text}>now is {now.toISOString()}</Text>
-      {error ? <Text style={styles.text}>Error is {error}</Text> : null}
-      <Text style={styles.text}>
-        accelerometer data is in gs where 1g = 9.81 m/s^2
-      </Text>
-      <Text style={{ ...styles.text, color: 'red' }}>
-        x({chartDataX.length}): {x}
-      </Text>
-      <Text style={{ ...styles.text, color: 'green' }}>
-        y({chartDataY.length}): {y}
-      </Text>
-      <Text style={{ ...styles.text, color: 'blue' }}>
-        z({chartDataZ.length}): {z}
-      </Text>
-
-      {waterLevel > 0 ? (
-        <View style={styles.bottleWrapper}>
-          <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} />
+    );
+  } else {
+    return (
+      <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image style={styles.tinyLogo} source={require('../../assets/itsar/logo.png')} />
         </View>
-      ) : null}
-    </View>
-  );
+        <Text style={styles.text}>v {VERSION}</Text>
+        <Text style={{ ...styles.text, fontSize: 18, color: team ?? undefined }}>
+          {fingerprint}
+        </Text>
+        <Text style={styles.text}>loaded on {_.toISOString()}</Text>
+        <Text style={styles.text}>now is {now.toISOString()}</Text>
+        {error ? <Text style={styles.text}>Error is {error}</Text> : null}
+        <Text style={styles.text}>
+          accelerometer data is in gs where 1g = 9.81 m/s^2
+        </Text>
+        <Text style={{ ...styles.text, color: 'red' }}>
+          x({chartDataX.length}): {x}
+        </Text>
+        <Text style={{ ...styles.text, color: 'green' }}>
+          y({chartDataY.length}): {y}
+        </Text>
+        <Text style={{ ...styles.text, color: 'blue' }}>
+          z({chartDataZ.length}): {z}
+        </Text>
+
+        {waterLevel > 0 ? (
+          <View style={styles.bottleWrapper}>
+            <Bottle rollDeg={clamp(rollDeg, -70, 70)} level={waterLevel} />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
