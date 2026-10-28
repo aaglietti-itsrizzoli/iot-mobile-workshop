@@ -23,7 +23,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 const INTERVAL = 500;
 
 // Accelerazione di gravità: serve per normalizzare i dati del web
@@ -49,6 +49,7 @@ const FINGERPRINT_DATA = {
   productName: Device.productName,
   supportedCpuArchitectures: Device.supportedCpuArchitectures,
   totalMemory: Device.totalMemory,
+  random: Math.floor(Math.random()*100000)
 };
 
 type Accel = { x: number; y: number; z: number };
