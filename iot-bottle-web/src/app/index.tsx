@@ -23,7 +23,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 const INTERVAL = 500;
 
 // Accelerazione di gravità: serve per normalizzare i dati del web
@@ -155,7 +155,7 @@ const startMyTurn = async (
 
 const _ = new Date();
 
-const GITHUB_CODESPACE_NAME = 'fluffy-xylophone-xg7jv9vx5vqcv666';
+const GITHUB_CODESPACE_NAME = 'accursed-apparition-r5qjprp6jp9cx5vp';
 const API_BASE_URL = `https://${GITHUB_CODESPACE_NAME}-3000.app.github.dev`;
 
 async function devices(
