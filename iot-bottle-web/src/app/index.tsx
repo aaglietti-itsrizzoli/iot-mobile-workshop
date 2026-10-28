@@ -23,7 +23,7 @@ import Svg, {
 } from 'react-native-svg';
 
 const RETENTION = 1000;
-const VERSION = '0.1.7';
+const VERSION = '0.1.8';
 const INTERVAL = 500;
 
 // Accelerazione di gravità: serve per normalizzare i dati del web
@@ -53,6 +53,37 @@ const FINGERPRINT_DATA = {
 };
 
 type Accel = { x: number; y: number; z: number };
+
+const DEVICE_ID_KEY = 'iot-bottle-device-id';
+
+// Ritorna un identificativo stabile per questo dispositivo/browser:
+// generato casualmente la prima volta e salvato in localStorage,
+// così sopravvive ai refresh ma resta unico per ogni client.
+async function getStableDeviceId(): Promise<string> {
+  // 1. prova a recuperare un id già salvato (solo web: localStorage)
+  try {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const existing = localStorage.getItem(DEVICE_ID_KEY);
+      if (existing) return existing;
+    }
+  } catch {
+    // localStorage può lanciare (es. Safari in modalità privata): ignoriamo
+  }
+
+  // 2. non esiste: generane uno nuovo (UUID crittografico) e salvalo
+  const fresh =
+    typeof Crypto.randomUUID === 'function'
+      ? Crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`; // fallback difensivo
+
+  try {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      localStorage.setItem(DEVICE_ID_KEY, fresh);
+    }
+  } catch {}
+
+  return fresh;
+}
 
 // ---------------------------------------------------------------------------
 // Backup web: DeviceMotion API del browser
@@ -428,9 +459,11 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
+      const stableId = await getStableDeviceId();
       const digest = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
-        JSON.stringify(FINGERPRINT_DATA)
+        stableId
+        //JSON.stringify(FINGERPRINT_DATA)
       );
       setFingerprint(digest);
       const first = digest.slice(0, 2);
